@@ -58,7 +58,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	// Make sure we close the connection when the function returns
-	defer ws.Close()
+	//defer ws.Close()
 
 	// Register our new client
 	id, err := uuid.NewRandom()
@@ -71,22 +71,39 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		//Send:   make(chan []byte, 256),
 		//Rooms:  make(map[string]*Room),
 	}
-	log.Printf("Entrou ID: %s", c.Id)
+	log.Printf("Entrou ID: %v", c)
 	ConnManager[c.Id] = c
+
+	if c != nil {
+
+		go c.readSocket()
+
+	}
+
+}
+
+func (c *Conn) readSocket() {
 
 	//tratar o que o socket recebe
 	for {
 		var msg Message
+
 		// Read in a new message as JSON and map it to a Message object
-		err := ws.ReadJSON(&msg)
+		err := c.Socket.ReadJSON(&msg)
+
 		if err != nil {
 			log.Printf("error: %v", err)
 			//delete(clients, ws)
 			break
 		}
+
+		HandleData(c, msg)
 		// Send the newly received message to the broadcast channel
 		//broadcast <- msg
-		log.Printf("msg: %s", msg)
+		//log.Printf("msg: %s", msg)
 	}
+}
 
+var HandleData = func(c *Conn, msg Message) {
+	log.Printf("msg: %s", msg.Event)
 }
