@@ -34,7 +34,7 @@
                         console.log("Connection closed - ", evt)
                     };
                     conn.onmessage = function (evt) {
-                        console.log("MSG: ",evt);
+                        console.log("MSG: ",evt.data);
                     };
                 } else {
                     console.log("Your browser does not support WebSockets.")

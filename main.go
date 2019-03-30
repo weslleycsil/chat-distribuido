@@ -30,6 +30,7 @@ var (
 	upgrader    = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
+	broadcast = make(chan Message) // channel broadcast
 )
 
 func main() {
@@ -41,7 +42,7 @@ func main() {
 	http.HandleFunc("/ws", handleConnections)
 
 	// Start listening for incoming chat messages
-	//go handleMessages()
+	go handleMessages()
 
 	// Start the server on localhost port 8000 and log any errors
 	log.Println("http server started on :8000")
@@ -71,8 +72,8 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		//Send:   make(chan []byte, 256),
 		//Rooms:  make(map[string]*Room),
 	}
-	log.Printf("Entrou ID: %v", c)
-	ConnManager[c.Id] = c
+	log.Printf("Entrou ID: %v", c.Id)
+	//log.Printf("ConnManager: %v", ConnManager)
 
 	if c != nil {
 
@@ -83,6 +84,10 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Conn) readSocket() {
+
+	defer func() {
+		c.Socket.Close()
+	}()
 
 	//tratar o que o socket recebe
 	for {
@@ -100,10 +105,45 @@ func (c *Conn) readSocket() {
 		HandleData(c, msg)
 		// Send the newly received message to the broadcast channel
 		//broadcast <- msg
-		//log.Printf("msg: %s", msg)
+		//log.Printf("Received: %s", msg)
 	}
 }
 
 var HandleData = func(c *Conn, msg Message) {
-	log.Printf("msg: %s", msg.Event)
+	log.Printf("Event: %s", msg.Event)
+	//broadcast <- msg
+	switch msg.Event {
+	case "join":
+		log.Printf("JOIN Room")
+		//c.Join(msg.Room)
+	case "leave":
+		log.Printf("Leave Room")
+		//c.Leave(msg.Room)
+	case "joined":
+		//c.Emit(msg)
+	case "left":
+		//c.Emit(msg)
+	default:
+		broadcast <- msg
+		//c.Socket.WriteJSON(msg)
+	}
+}
+
+func handleMessages() {
+	for {
+		// Grab the next message from the broadcast channel
+		msg := <-broadcast
+		log.Printf("MSG!: %v", msg)
+		// Send it out to every client that is currently connected
+		for _, client := range ConnManager {
+			//log.Printf("S: %v", client)
+			log.Printf("MSG: %v", msg)
+			err := client.Socket.WriteJSON(msg)
+			if err != nil {
+				log.Printf("error: %v", err)
+				client.Socket.Close()
+				//delete(clients, client)
+			}
+		}
+	}
 }
