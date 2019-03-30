@@ -32,6 +32,25 @@ var (
 	}
 )
 
+func main() {
+	// Create a simple file server
+	fs := http.FileServer(http.Dir("./public"))
+	http.Handle("/", fs)
+
+	// Configure websocket route
+	http.HandleFunc("/ws", handleConnections)
+
+	// Start listening for incoming chat messages
+	//go handleMessages()
+
+	// Start the server on localhost port 8000 and log any errors
+	log.Println("http server started on :8000")
+	err := http.ListenAndServe(":8000", nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
+}
+
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	// Upgrade initial GET request to a websocket
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -44,7 +63,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	// Register our new client
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return nil
+		log.Fatal(err)
 	}
 	c := &Conn{
 		Socket: ws,
@@ -52,7 +71,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		//Send:   make(chan []byte, 256),
 		//Rooms:  make(map[string]*Room),
 	}
-
+	log.Printf("Entrou ID: %s", c.Id)
 	ConnManager[c.Id] = c
 
 	//tratar o que o socket recebe
@@ -62,11 +81,12 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		err := ws.ReadJSON(&msg)
 		if err != nil {
 			log.Printf("error: %v", err)
-			delete(clients, ws)
+			//delete(clients, ws)
 			break
 		}
 		// Send the newly received message to the broadcast channel
-		broadcast <- msg
+		//broadcast <- msg
+		log.Printf("msg: %s", msg)
 	}
 
 }

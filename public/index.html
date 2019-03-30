@@ -1,0 +1,27 @@
+<html>
+    <head>
+        <title>
+            Web in Sockets
+        </title>
+        <script type="text/javascript">
+            window.onload = function () {
+
+                if (window["WebSocket"]) {
+                    conn = new WebSocket("ws://" + document.location.host + "/ws");
+                    conn.onclose = function (evt) {
+                        console.log("Connection closed - ", evt)
+                    };
+                    conn.onmessage = function (evt) {
+                        console.log("MSG: ",evt);
+                    };
+                } else {
+                    console.log("Your browser does not support WebSockets.")
+                }
+
+            };
+        </script>
+    </head>
+    <body>
+
+    </body>
+</html>
