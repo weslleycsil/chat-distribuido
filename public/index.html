@@ -7,21 +7,21 @@
             window.onload = function () {
                 var conn;
                 var msg = document.getElementById("msg");
+                var mail = document.getElementById("mail");
+                var evt = document.getElementById("evt");
+                var usr = document.getElementById("usr");
                 var log = document.getElementById("log");
 
                 document.getElementById("form").onsubmit = function () {
                     if (!conn) {
                         return false;
                     }
-                    if (!msg.value) {
-                        return false;
-                    }
                     conn.send(
                         JSON.stringify({
-                            email: 'weslleycsil@gmail.com',
-                            username: 'weslley',
+                            email: mail.value,
+                            username: usr.value,
                             message: msg.value,
-                            event: 'msg',
+                            event: evt.value,
                         })
                     );
                     msg.value = "";
@@ -47,9 +47,9 @@
             <div id="log"></div>
             <form id="form">
                 <input type="text" id="msg" size="64">MSG</input> <br>
-                <input type="text" id="email" size="64">EMAIL</input> <br>
-                <input type="text" id="event" size="64">EVENT</input> <br>
-                <input type="text" id="username" size="64">USERNAME</input> <br>
+                <input type="text" id="mail" size="64">EMAIL</input> <br>
+                <input type="text" id="evt" size="64">EVENT</input> <br>
+                <input type="text" id="usr" size="64">USERNAME</input> <br>
 
                 <input type="submit" value="Send"/>
             </form>
