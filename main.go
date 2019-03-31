@@ -72,6 +72,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		//Send:   make(chan []byte, 256),
 		//Rooms:  make(map[string]*Room),
 	}
+	ConnManager[c.Id] = c
 	log.Printf("Entrou ID: %v", c.Id)
 	//log.Printf("ConnManager: %v", ConnManager)
 
