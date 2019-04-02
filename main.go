@@ -146,7 +146,12 @@ var HandleData = func(c *Conn, msg Message) {
 		log.Printf("Leave Room")
 		c.Leave(msg.Room)
 	default:
-		broadcast <- msg
+		// Esse cliente tem permissão para esse canal?
+		if _, ok := c.Rooms[msg.Room] ; ok {
+			broadcast <- msg
+		} else {
+			log.Printf("Permissão Negada")
+		} 
 	}
 }
 
@@ -195,19 +200,28 @@ func (c *Conn) Join(name string) {
 
 // Cria uma nova ROOM.
 func NewRoom(name string) *Room {
-	if name == "" {
-		return nil
-	}
-	if _, ok := RoomManager[name]; ok {
-		return nil
-	}
 	r := &Room{
-		Name:    name,
+		Name:    "Default Room",
 		Members: make(map[string]*Conn),
 	}
-	RoomManager[name] = r
-	//log.Printf("Salas: %v", RoomManager)
-	return r
+	// A sala ja existe?
+	if _, ok := RoomManager[name]; ok {
+		//log.Printf("A sala ja existe")
+		r = RoomManager[name]
+		return r
+	
+	// O nome foi setado?
+	} else if name == "" {
+		RoomManager[name] = r
+		return r
+	
+	} else {
+		r.Name = name
+		RoomManager[name] = r
+		//log.Printf("Salas: %v", RoomManager)
+		return r
+
+	}
 }
 
 // Change user.
