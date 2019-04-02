@@ -211,6 +211,7 @@ func NewRoom(name string) *Room {
 		return r
 	
 	} else {
+		r.Name = name
 		RoomManager[name] = r
 		//log.Printf("Salas: %v", RoomManager)
 		return r
