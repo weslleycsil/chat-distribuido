@@ -233,6 +233,7 @@ func (c *Conn) ChangeUser(user string) {
 			Username: "Servidor",
 			Message:  c.User + " mudou para " + user,
 			Event:    "msg",
+			Room:     room.Name
 		}
 
 		broadcast <- m
