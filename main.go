@@ -146,7 +146,12 @@ var HandleData = func(c *Conn, msg Message) {
 		log.Printf("Leave Room")
 		c.Leave(msg.Room)
 	default:
-		broadcast <- msg
+		// Esse cliente tem permissão para esse canal?
+		if _, ok := c.Rooms[msg.Room] ; ok {
+			broadcast <- msg
+		} else {
+			log.Printf("Permissão Negada")
+		} 
 	}
 }
 
