@@ -7,7 +7,8 @@ var obj = {
 };
 
 var conn; // conexao websocket
-
+var chat = document.getElementById("chat");
+var roomList = document.getElementById("Salas");
 
 function newRoom() {
     //criar uma nova sala
@@ -17,21 +18,20 @@ function newRoom() {
     obj.Room = roomNew;
     sendMsg(obj);
     console.log('New Room!');
-    $('#enter').modal('hide');
+    $('#NewRoom').modal('hide');
 };
 
 function joinRoom() {
-    var chat = localStorage.getItem('objChat')
+    var chat = JSON.parse(localStorage.getItem('objChat'));
     chat.Room = document.getElementById("inputRoom").value;
-    console.log(document.getElementById("inputRoom").value)
-    localStorage.setItem('objChat', chat);
+    localStorage.setItem('objChat', JSON.stringify(chat));
     //enviar msg para join new room
     obj.Event = 'join';
     obj.Room = chat.Room;
     obj.Message = "";
     sendMsg(obj);
     console.log('Join Room!');
-    $('#enter').modal('hide');
+    $('#joinRoom').modal('hide');
 };
 
 function enterChat() {
@@ -40,7 +40,7 @@ function enterChat() {
         username: document.getElementById("inputUser").value,
         room: 'root',
     };
-    localStorage.setItem('objChat', chat);
+    localStorage.setItem('objChat', JSON.stringify(chat));
     obj.Username = chat.username;
     obj.Email = chat.email;
     obj.Event = 'change';
@@ -48,21 +48,21 @@ function enterChat() {
     obj.Room = 'root';
     obj.Event = 'add';
     sendMsg(obj)
-    console.log('Enter Chat!');
+    //console.log('Enter Chat!');
     $('#enter').modal('hide');
 };
 
 function changeUsername() {
-    var chat = localStorage.getItem('objChat')
+    var chat = JSON.parse(localStorage.getItem('objChat'));
     chat.Username = document.getElementById("inputUsername").value;
-    localStorage.setItem('objChat', chat);
+    localStorage.setItem('objChat', JSON.stringify(chat));
     //enviar msg para join new room
     obj.Event = 'change';
     obj.Username = chat.Username;
     obj.Message = "";
     sendMsg(obj);
     console.log('Change Username!');
-    $('#enter').modal('hide');
+    $('#changeNick').modal('hide');
 };
 
 function abrirPopup(n){
@@ -109,7 +109,10 @@ function appendChat(m){
 
 function appendRoom(room){
     var item = document.createElement("li");
-    item.innerText = 'Sala #'+room;
+    var a = document.createElement("a");
+    a.src = "javascript:abrirSala('"+'Nome da Sala'+"')";
+    a.innerText = 'Sala #'+room;
+    item.appendChild(a);
     roomList.appendChild(item);
 }
 
@@ -117,11 +120,21 @@ function gravatar(email) {
     return 'http://www.gravatar.com/avatar/' + md5(email);
 }
 
+function addMsg(msg){
+    var msgs = JSON.parse(localStorage.getItem(msg.room));
+    if(msgs == null){
+        msgs = [];
+    }
+    msgs.push(msg);
+    console.log(msgs)
+    localStorage.setItem(msg.room, JSON.stringify(msgs));
+}
+
 function Enviar(){
     if (!conn) {
         return false;
     }
-    var chat = localStorage.getItem('objChat')
+    var chat = JSON.parse(localStorage.getItem('objChat'));
     obj.Message = document.getElementById("msg").value;
     obj.Event = "msg";
     sendMsg(obj);
@@ -138,13 +151,13 @@ window.onload = function () {
             console.log("Connection closed - ", evt)
         };
         conn.onmessage = function (evt) {
-            //msgt = evt.data.split(`\n`);
             msgEvt = JSON.parse(evt.data)
-            console.log("MSG: ", msgEvt)
             if(msgEvt.event == "msg"){
                 appendChat(msgEvt);
+                addMsg(msgEvt);
             } else {
                 // tratar outros tipos de mensagens
+                console.log(msgEvt)
             }
         };
     } else {
