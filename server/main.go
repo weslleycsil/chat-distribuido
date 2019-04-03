@@ -147,11 +147,11 @@ var HandleData = func(c *Conn, msg Message) {
 		c.Leave(msg.Room)
 	default:
 		// Esse cliente tem permissão para esse canal?
-		if _, ok := c.Rooms[msg.Room] ; ok {
+		if _, ok := c.Rooms[msg.Room]; ok {
 			broadcast <- msg
 		} else {
 			log.Printf("Permissão Negada")
-		} 
+		}
 	}
 }
 
@@ -209,12 +209,12 @@ func NewRoom(name string) *Room {
 		//log.Printf("A sala ja existe")
 		r = RoomManager[name]
 		return r
-	
-	// O nome foi setado?
+
+		// O nome foi setado?
 	} else if name == "" {
 		RoomManager[name] = r
 		return r
-	
+
 	} else {
 		r.Name = name
 		RoomManager[name] = r
@@ -229,11 +229,11 @@ func (c *Conn) ChangeUser(user string) {
 	for _, room := range c.Rooms {
 
 		m := Message{
-			Email:    room.Name,
+			Email:    "email",
 			Username: "Servidor",
 			Message:  c.User + " mudou para " + user,
 			Event:    "msg",
-			Room:     room.Name
+			Room:     room.Name,
 		}
 
 		broadcast <- m
