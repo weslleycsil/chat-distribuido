@@ -8,21 +8,22 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Define o Objeto da Conexão
+// Define o Objeto da Conexão.
 type Conn struct {
-	Id     string //identificacao única
-	User   string // Usuário do Cliente
-	Socket *websocket.Conn
-	Rooms  map[string]*Room
+	
+	Id     string		         // Identificação única.
+	User   string 		         // Nickname / Usuário do Cliente.
+	Socket *websocket.Conn		 // Endereço da conexão.
+	Rooms  map[string]*Room		 // Endereço das salas à que pertence.
 }
 
-// Define o objeto sala
+// Define o objeto sala.
 type Room struct {
-	Name    string
-	Members map[string]*Conn
+	Name    string				// Identificador da sala.
+	Members map[string]*Conn		// Endereço das conexões conectadas à está sala.
 }
 
-// Define our message object
+// Define o objeto mensagem.
 type Message struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
@@ -31,31 +32,31 @@ type Message struct {
 	Room     string `json:"room"`
 }
 
+// Declaração de variáveis.
 var (
-	// Armazena todas as CONNs pelo ID
-	ConnManager = make(map[string]*Conn)
-	// Armazena todas as ROOMs pelo Nome
-	RoomManager = make(map[string]*Room)
-	// channel broadcast
-	broadcast = make(chan Message)
+	ConnManager = make(map[string]*Conn)      // Armazena todas as CONNs pelo ID.
+	RoomManager = make(map[string]*Room)      // Armazena todas as ROOMs pelo Nome.
+	broadcast = make(chan Message)	          // Chanal responsavel pela transmissão das mensagens.
+
 	// Atualiza uma conexao HTTP para Web Socket
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
 )
 
+// Função principal.
 func main() {
-	// Serviço para a App WEB
+	// Serviço para a App WEB.
 	fs := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fs)
 
-	// Configuração da rota do websocket
+	// Configuração da rota do websocket.
 	http.HandleFunc("/ws", handleConnections)
 
-	// Ouvir mensagens entrantes no channel broadcast
+	// Ouvir mensagens que entram no channel broadcast.
 	go handleMessages()
 
-	// Iniciar o servidor na porta 8000 no localhost
+	// Iniciar o servidor na porta 8000 no localhost.
 	log.Println("ChatGO Iniciado na porta :8000")
 	err := http.ListenAndServe(":8000", nil)
 	if err != nil {
@@ -63,9 +64,11 @@ func main() {
 	}
 }
 
-/**
-* Função para tratar as novas conexões
- */
+/* 
+			### Funções para tratar as novas conexões. ###
+*/
+
+// Gerencia a parte inicial da conexão.
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	// Upgrade initial GET request to a websocket
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -73,7 +76,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	// Make sure we close the connection when the function returns
-	//defer ws.Close()
+	// defer ws.Close()
 
 	// UUID unica para o cliente
 	id, err := uuid.NewRandom()
@@ -81,6 +84,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	// Armazena a conexão
 	c := &Conn{
 		Socket: ws,
 		User:   id.String(), // momentaneamente o username do usuario é o ID dele
@@ -99,17 +103,18 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// Leitura de informações pelo socket.
 func (c *Conn) readSocket() {
 
 	defer func() {
 		c.Socket.Close()
 	}()
 
-	//tratar o que o socket recebe
+	// Tratar o que o socket recebe.
 	for {
 		var msg Message
 
-		// Ler as mensagens que são enviadas para o socket
+		// Ler as mensagens que são enviadas para o socket.
 		err := c.Socket.ReadJSON(&msg)
 
 		if err != nil {
@@ -122,42 +127,43 @@ func (c *Conn) readSocket() {
 	}
 }
 
-/**
-* Função para tratar todos os dados recebidos pelo socket
- */
+/* 
+			### Funções para tratar as dados no socket. ###
+*/
+
+// Gerencia dos eventos.
 var HandleData = func(c *Conn, msg Message) {
 
 	switch msg.Event {
-	case "add":
-		//log.Printf("ADD Room")
-		sala := NewRoom(msg.Room)
-		log.Printf("Sala %s Criada", sala.Name)
-		c.ChangeUser(msg.Username)
-		c.Join(msg.Room)
-	case "join":
-		log.Printf("JOIN Room")
-		c.ChangeUser(msg.Username)
-		c.Join(msg.Room)
-	case "change":
-		c.ChangeUser(msg.Username)
-		log.Printf("Troca Nick")
-		//c.Leave(msg.Room)
-	case "leave":
-		log.Printf("Leave Room")
-		c.Leave(msg.Room)
-	default:
-		// Esse cliente tem permissão para esse canal?
-		if _, ok := c.Rooms[msg.Room]; ok {
-			broadcast <- msg
-		} else {
-			log.Printf("Permissão Negada")
-		}
+		case "add":
+			//log.Printf("ADD Room")
+			sala := NewRoom(msg.Room)
+			log.Printf("Sala %s Criada", sala.Name)
+			c.refreshRooms(msg.Room)
+			c.Join(msg.Room)
+		case "join":
+			log.Printf("Join Room")
+			c.Join(msg.Room)
+		case "change":
+			c.ChangeUser(msg.Username)
+			log.Printf("Change User")
+		case "leave":
+			log.Printf("Leave Room")
+			c.Leave(msg.Room)
+		default:
+			// Esse cliente tem permissão para esse canal?
+			if _, ok := c.Rooms[msg.Room]; ok {
+				// Envia a msg para o canal.
+				broadcast <- msg
+			} else {
+				log.Printf("Permissão Negada")
+			}
 	}
 }
 
-/**
-*	Função para tratar o broadcast das mensagens recebidas, enviando para suas respectivas salas
- */
+/*
+			### Funções para tratar o broadcast das mensagens recebidas. ###
+*/
 func handleMessages() {
 	for {
 		// Pego a informação que está no channel
@@ -181,9 +187,8 @@ func handleMessages() {
 	}
 }
 
-/**
-*	Função Join Room
- */
+
+// Entrando nas Rooms
 func (c *Conn) Join(name string) {
 	var room *Room
 
@@ -224,7 +229,16 @@ func NewRoom(name string) *Room {
 	}
 }
 
-// Change user.
+// Remove usuario da sala
+func (c *Conn) Leave(name string) {
+	room := RoomManager[name]
+	delete(room.Members, c.Id)
+	delete(ConnManager, c.Id)
+	c.Status(name, true)
+	//log.Printf("CONEXOES: %v", ConnManager)
+}
+
+// Troca username ou nickname.
 func (c *Conn) ChangeUser(user string) {
 	for _, room := range c.Rooms {
 
@@ -242,7 +256,7 @@ func (c *Conn) ChangeUser(user string) {
 	c.User = user
 }
 
-// joined/leave
+// Avisos do sistema [joined/leave]
 func (c *Conn) Status(name string, s bool) {
 	//room := RoomManager[name]
 	user := c.User
@@ -263,10 +277,16 @@ func (c *Conn) Status(name string, s bool) {
 	broadcast <- m
 }
 
-func (c *Conn) Leave(name string) {
-	room := RoomManager[name]
-	delete(room.Members, c.Id)
-	delete(ConnManager, c.Id)
-	c.Status(name, true)
-	//log.Printf("CONEXOES: %v", ConnManager)
+// Avisos do sistema [sala adicionada]
+func (c *Conn) refreshRooms(name string) {
+
+	m := Message{
+		Email:    "email",
+		Username: "Servidor",
+		Message:  "add sala",
+		Event:    "command",
+		Room:     name,
+	}
+	log.Printf("Aviso de nova sala criada")
+	broadcast <- m
 }
