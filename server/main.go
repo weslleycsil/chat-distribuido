@@ -201,7 +201,7 @@ func (c *Conn) Join(name string) {
 // Cria uma nova ROOM.
 func NewRoom(name string) *Room {
 	r := &Room{
-		Name:    "Default Room",
+		Name:    "root",
 		Members: make(map[string]*Conn),
 	}
 	// A sala ja existe?
