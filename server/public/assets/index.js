@@ -14,7 +14,7 @@ function newRoom() {
     //criar uma nova sala
     var roomNew = document.getElementById("inputNewRoom").value;
     obj.Event = 'add';
-    obj.Message = "";
+    obj.Message = "adicionar sala";
     obj.Room = roomNew;
     sendMsg(obj);
     console.log('New Room!');
@@ -28,7 +28,7 @@ function joinRoom() {
     //enviar msg para join new room
     obj.Event = 'join';
     obj.Room = chat.Room;
-    obj.Message = "";
+    obj.Message = "entrar em sala";
     sendMsg(obj);
     console.log('Join Room!');
     $('#joinRoom').modal('hide');
@@ -42,9 +42,11 @@ function enterChat() {
     };
     localStorage.setItem('objChat', JSON.stringify(chat));
     obj.Username = chat.username;
+    obj.Message = "mudar nome";
     obj.Email = chat.email;
     obj.Event = 'change';
     sendMsg(obj);
+    obj.Message = "adicionar sala";
     obj.Room = 'root';
     obj.Event = 'add';
     sendMsg(obj)
@@ -59,7 +61,7 @@ function changeUsername() {
     //enviar msg para join new room
     obj.Event = 'change';
     obj.Username = chat.Username;
-    obj.Message = "";
+    obj.Message = "mudar nome";
     sendMsg(obj);
     console.log('Change Username!');
     $('#changeNick').modal('hide');
