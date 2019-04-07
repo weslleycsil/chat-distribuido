@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -10,17 +13,16 @@ import (
 
 // Define o Objeto da Conexão.
 type Conn struct {
-	
-	Id     string		         // Identificação única.
-	User   string 		         // Nickname / Usuário do Cliente.
-	Socket *websocket.Conn		 // Endereço da conexão.
-	Rooms  map[string]*Room		 // Endereço das salas à que pertence.
+	Id     string           // Identificação única.
+	User   string           // Nickname / Usuário do Cliente.
+	Socket *websocket.Conn  // Endereço da conexão.
+	Rooms  map[string]*Room // Endereço das salas à que pertence.
 }
 
 // Define o objeto sala.
 type Room struct {
-	Name    string				// Identificador da sala.
-	Members map[string]*Conn		// Endereço das conexões conectadas à está sala.
+	Name    string           // Identificador da sala.
+	Members map[string]*Conn // Endereço das conexões conectadas à está sala.
 }
 
 // Define o objeto mensagem.
@@ -34,9 +36,13 @@ type Message struct {
 
 // Declaração de variáveis.
 var (
-	ConnManager = make(map[string]*Conn)      // Armazena todas as CONNs pelo ID.
-	RoomManager = make(map[string]*Room)      // Armazena todas as ROOMs pelo Nome.
-	broadcast = make(chan Message)	          // Chanal responsavel pela transmissão das mensagens.
+	ConnManager  = make(map[string]*Conn) // Armazena todas as CONNs pelo ID.
+	RoomManager  = make(map[string]*Room) // Armazena todas as ROOMs pelo Nome.
+	broadcast    = make(chan Message)     // Chanal responsavel pela transmissão das mensagens.
+	broadcastTCP = make(chan Message)     // Chanal responsavel pela transmissão das mensagens.
+
+	//tcp entre servidores
+	readStr = make([]byte, 1024)
 
 	// Atualiza uma conexao HTTP para Web Socket
 	upgrader = websocket.Upgrader{
@@ -55,6 +61,7 @@ func main() {
 
 	// Ouvir mensagens que entram no channel broadcast.
 	go handleMessages()
+	go tcpCom()
 
 	// Iniciar o servidor na porta 8000 no localhost.
 	log.Println("ChatGO Iniciado na porta :8000")
@@ -64,8 +71,8 @@ func main() {
 	}
 }
 
-/* 
-			### Funções para tratar as novas conexões. ###
+/*
+	### Funções para tratar as novas conexões. ###
 */
 
 // Gerencia a parte inicial da conexão.
@@ -127,42 +134,46 @@ func (c *Conn) readSocket() {
 	}
 }
 
-/* 
-			### Funções para tratar as dados no socket. ###
+/*
+	### Funções para tratar as dados no socket. ###
 */
 
 // Gerencia dos eventos.
 var HandleData = func(c *Conn, msg Message) {
 
 	switch msg.Event {
-		case "add":
-			//log.Printf("ADD Room")
-			sala := NewRoom(msg.Room)
-			log.Printf("Sala %s Criada", sala.Name)
-			c.refreshRooms(msg.Room)
-			c.Join(msg.Room)
-		case "join":
-			log.Printf("Join Room")
-			c.Join(msg.Room)
-		case "change":
-			c.ChangeUser(msg.Username)
-			log.Printf("Change User")
-		case "leave":
-			log.Printf("Leave Room")
-			c.Leave(msg.Room)
-		default:
-			// Esse cliente tem permissão para esse canal?
-			if _, ok := c.Rooms[msg.Room]; ok {
-				// Envia a msg para o canal.
-				broadcast <- msg
-			} else {
-				log.Printf("Permissão Negada")
-			}
+	case "add":
+		//log.Printf("ADD Room")
+		sala := NewRoom(msg.Room)
+		log.Printf("Sala %s Criada", sala.Name)
+		//enviar para o tcp
+		broadcastTCP <- msg
+		//
+		refreshRooms(msg.Room)
+		c.Join(msg.Room)
+	case "join":
+		log.Printf("Join Room")
+		c.Join(msg.Room)
+	case "change":
+		c.ChangeUser(msg.Username)
+		log.Printf("Change User")
+	case "leave":
+		log.Printf("Leave Room")
+		c.Leave(msg.Room)
+	default:
+		// Esse cliente tem permissão para esse canal?
+		if _, ok := c.Rooms[msg.Room]; ok {
+			// Envia a msg para o canal.
+			broadcast <- msg
+			broadcastTCP <- msg
+		} else {
+			log.Printf("Permissão Negada")
+		}
 	}
 }
 
 /*
-			### Funções para tratar o broadcast das mensagens recebidas. ###
+	### Funções para tratar o broadcast das mensagens recebidas. ###
 */
 func handleMessages() {
 	for {
@@ -174,19 +185,20 @@ func handleMessages() {
 		// obtenho o room que tem como destino a msg
 		room := RoomManager[msg.Room]
 
-		//loop criado com o intuito de enviar a mensagem para todas as conexões de uma determinada sala
-		for _, client := range room.Members {
-			log.Printf("MSG: %v", msg)
-			err := client.Socket.WriteJSON(msg)
-			if err != nil {
-				log.Printf("error: %v", err)
-				client.Socket.Close()
-				//delete(ConnManager, client.Id)
+		if len(room.Members) > 0 { // se tiver pessoas na sala
+			//loop criado com o intuito de enviar a mensagem para todas as conexões de uma determinada sala
+			for _, client := range room.Members {
+				log.Printf("MSG: %v", msg)
+				err := client.Socket.WriteJSON(msg)
+				if err != nil {
+					log.Printf("error: %v", err)
+					client.Socket.Close()
+					//delete(ConnManager, client.Id)
+				}
 			}
 		}
 	}
 }
-
 
 // Entrando nas Rooms
 func (c *Conn) Join(name string) {
@@ -275,10 +287,11 @@ func (c *Conn) Status(name string, s bool) {
 	}
 
 	broadcast <- m
+	broadcastTCP <- m
 }
 
 // Avisos do sistema [sala adicionada]
-func (c *Conn) refreshRooms(name string) {
+func refreshRooms(name string) {
 
 	m := Message{
 		Email:    "email",
@@ -289,4 +302,60 @@ func (c *Conn) refreshRooms(name string) {
 	}
 	log.Printf("Aviso de nova sala criada")
 	broadcast <- m
+}
+
+func tcpCom() {
+	var (
+		host   = "127.0.0.1"
+		port   = "8081"
+		remote = host + ":" + port
+	)
+
+	con, err := net.Dial("tcp", remote)
+	defer con.Close()
+
+	if err != nil {
+		fmt.Println("Server not found.")
+	}
+
+	go tcpRead(con)
+
+	for {
+		writeStr := <-broadcastTCP
+		bolB, _ := json.Marshal(writeStr)
+
+		in, err := con.Write(bolB)
+		if err != nil {
+			fmt.Printf("Error when send to server: %d\n", in)
+		}
+
+	}
+}
+
+func tcpRead(conn net.Conn) {
+	for {
+		length, err := conn.Read(readStr)
+		if err != nil {
+			fmt.Printf("Error when read from server. Error:%s\n", err)
+		}
+
+		str := string(readStr[:length])
+		msg := Message{}
+		json.Unmarshal([]byte(str), &msg)
+		log.Printf("MSG!: %v", msg)
+
+		handleTcp(msg)
+	}
+}
+
+func handleTcp(msg Message) {
+	log.Printf("MSG!: %v", msg)
+	switch msg.Event {
+	case "add":
+		sala := NewRoom(msg.Room)
+		log.Printf("Sala %s Criada", sala.Name)
+		refreshRooms(msg.Room)
+	default:
+		//broadcast <- msg
+	}
 }
