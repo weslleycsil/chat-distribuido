@@ -306,7 +306,7 @@ func refreshRooms(name string) {
 
 func tcpCom() {
 	var (
-		host   = "127.0.0.1"
+		host   = "hub"
 		port   = "8081"
 		remote = host + ":" + port
 	)
@@ -356,6 +356,6 @@ func handleTcp(msg Message) {
 		log.Printf("Sala %s Criada", sala.Name)
 		refreshRooms(msg.Room)
 	default:
-		//broadcast <- msg
+		broadcast <- msg
 	}
 }

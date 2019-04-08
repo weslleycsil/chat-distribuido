@@ -12,7 +12,7 @@ var writeStr, readStr = make([]byte, 1024), make([]byte, 1024)
 func main() {
 	var (
 		host   = "127.0.0.1"
-		port   = "32768"
+		port   = "8081"
 		remote = host + ":" + port
 		reader = bufio.NewReader(os.Stdin)
 	)
@@ -25,6 +25,11 @@ func main() {
 	}
 
 	go read(con)
+
+	in, err := con.Write([]byte("Vamos Lá"))
+	if err != nil {
+		fmt.Printf("Error when send to server: %d\n", in)
+	}
 
 	for {
 		writeStr, _, _ = reader.ReadLine()
