@@ -1,4 +1,4 @@
-FROM golang:1.12.1-alpine3.9
+FROM golang:1.10.4-alpine
 
 RUN apk add --no-cache git mercurial \
     && go get "github.com/google/uuid" \
