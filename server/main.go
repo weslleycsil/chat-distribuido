@@ -69,6 +69,15 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
+
+	//comunicaçao entre servidores
+	con, err := net.Dial("tcp", "127.0.0.1:8081")
+
+	if err != nil {
+		fmt.Println("Server not found.")
+	}
+	go tcpWrite(con)
+	go tcpRead(con)
 }
 
 /*
@@ -304,22 +313,10 @@ func refreshRooms(name string) {
 	broadcast <- m
 }
 
-func tcpCom() {
-	var (
-		host   = "hub"
-		port   = "8081"
-		remote = host + ":" + port
-	)
-
-	con, err := net.Dial("tcp", remote)
-	defer con.Close()
-
-	if err != nil {
-		fmt.Println("Server not found.")
-	}
-
-	go tcpRead(con)
-
+func tcpWrite(conn net.Conn){
+	defer func() {
+		con.Close()
+	}()
 	for {
 		writeStr := <-broadcastTCP
 		bolB, _ := json.Marshal(writeStr)
@@ -331,7 +328,6 @@ func tcpCom() {
 
 	}
 }
-
 func tcpRead(conn net.Conn) {
 	for {
 		length, err := conn.Read(readStr)
@@ -340,6 +336,7 @@ func tcpRead(conn net.Conn) {
 		}
 
 		str := string(readStr[:length])
+		log.Printf("ROLO: %S", str)
 		msg := Message{}
 		json.Unmarshal([]byte(str), &msg)
 		log.Printf("MSG!: %v", msg)
