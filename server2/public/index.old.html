@@ -1,0 +1,226 @@
+<html lang="pt-br">
+
+<head>
+    <title>
+        Web in Sockets
+    </title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="#">Chat Go Socket</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+            aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+                </li>
+            </ul>
+            <div class="form-inline mt-2 mt-md-0">
+                <input id="roomChat" class="form-control mr-sm-2" type="text" placeholder="Nome da Sala" aria-label="Search">
+                <button class="btn btn-outline-success my-2 my-sm-0"  onclick="changeRoom();">IR</button>
+            </div>
+            <span>&nbsp;&nbsp;&nbsp;</span>
+            <div class="form-inline mt-2 mt-md-0">
+                <input id="username" class="form-control mr-sm-2" type="text" placeholder="Nome de Usuário" aria-label="Search">
+                <button class="btn btn-outline-success my-2 my-sm-0"  onclick="changeUser();">Mudar</button>
+            </div>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-4">
+                <div class="my-3 p-3 bg-white rounded shadow-sm" id="lateral">
+                        <h6 class="border-bottom border-gray pb-2 mb-0">Salas #</h6>
+                        <div class="form-inline mt-2 mt-md-0">
+                            <br>
+                            <div class="media text-muted pt-3">
+                                <ul id="Salas">
+                                    <li>Sala #Teste</li>
+                                </ul>
+                                
+                            </div>
+                            
+                            
+                        </div>
+                        <br>
+                        <div class="form-inline mt-2 mt-md-0">
+                                <input id="newRoom" class="form-control mr-sm-2" type="text" placeholder="Nova Sala" aria-label="Search">
+                                <button class="btn btn-outline-success my-2 my-sm-0"  onclick="newRoom();">Criar</button>
+                        </div>
+                </div>
+            </div>
+            <div class="col-8">
+                <div class="row">
+                    <div class="col">
+                        <div class="my-3 p-3 bg-white rounded shadow-sm" id="chat">
+                            <h6 class="border-bottom border-gray pb-2 mb-0">Room #</h6>
+                            <div class="media text-muted pt-3">
+                                <svg class="bd-placeholder-img mr-2 rounded" width="32" height="32"
+                                    xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice"
+                                    focusable="false" role="img" aria-label="Placeholder: 32x32">
+                                    <title>Placeholder</title>
+                                    <rect width="100%" height="100%" fill="#007bff"></rect><text x="50%" y="50%"
+                                        fill="#007bff" dy=".3em">32x32</text>
+                                </svg>
+                                <p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
+                                    <strong class="d-block text-gray-dark">@username</strong>
+                                    Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus
+                                    commodo,
+                                    tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Input do Chat -->
+                <div class="row">
+                    <div class="col-8">
+                        <label for="msg" class="sr-only">Mensagem</label>
+                        <input type="text" id="msg" class="form-control" placeholder="Escreva Aqui sua Mensagem"
+                            autofocus="true">
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-lg btn-primary btn-block"  onclick="Enviar();">Enviar</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <script>
+        var conn;
+        var msg = document.getElementById("msg");
+        var username = document.getElementById("username");
+        var roomChat = document.getElementById("roomChat");
+        var roomNew = document.getElementById("newRoom");
+        var roomList = document.getElementById("Salas");
+        var chat = document.getElementById("chat");
+
+        function appendChat(m){
+            var div = document.createElement("div");
+            div.className = "media text-muted pt-3";
+            var p = document.createElement("p");
+            p.className = "media-body pb-3 mb-0 small lh-125 border-bottom border-gray";
+            var strong = document.createElement("strong");
+            strong.className = "d-block text-gray-dark";
+            strong.innerHTML = "@"+m.username;
+            p.appendChild(strong);
+            var textnode = document.createTextNode(m.message);
+            p.appendChild(textnode);
+            div.appendChild(p);
+            chat.appendChild(div)
+
+        }
+        function Enviar() {
+            if (!conn) {
+                return false;
+            }
+            const obj = {
+                    Email: 'email',
+                    Username: username.value,
+                    Message: msg.value,
+                    Event: 'msg',
+                    Room: (roomChat.value == "") ? roomNew.value : roomChat.value
+            };
+            console.log(obj)
+            conn.send(
+                JSON.stringify(obj)
+            );
+            msg.value = "";
+            console.log('Msg Enviada!')
+            return true;
+        }
+        function changeUser() {
+            if (!conn) {
+                return false;
+            }
+            const obj = {
+                    Email: 'email',
+                    Username: username.value,
+                    Message: '',
+                    Event: 'change',
+                    Room: roomChat.value
+            };
+            console.log(obj)
+            conn.send(
+                JSON.stringify(obj)
+            );
+            msg.value = "";
+            console.log('Change User!')
+            return true;
+        }
+        function changeRoom() {
+            if (!conn) {
+                return false;
+            }
+            const obj = {
+                    Email: 'email',
+                    Username: username.value,
+                    Message: '',
+                    Event: 'join',
+                    Room: roomChat.value
+            };
+            console.log(obj)
+            conn.send(
+                JSON.stringify(obj)
+            );
+            msg.value = "";
+            console.log('Change Room!')
+            return true;
+        }
+        function newRoom() {
+            if (!conn) {
+                return false;
+            }
+            const obj = {
+                    Email: 'email',
+                    Username: username.value,
+                    Message: '',
+                    Event: 'add',
+                    Room: roomNew.value
+            };
+            console.log(obj)
+            conn.send(
+                JSON.stringify(obj)
+            );
+            msg.value = "";
+            var item = document.createElement("li");
+            item.innerText = 'Sala #'+roomNew.value;
+            roomList.appendChild(item);
+            console.log('Create Room!')
+            return true;
+        }
+        window.onload = function () {
+            if (window["WebSocket"]) {
+                conn = new WebSocket("ws://" + document.location.host + "/ws");
+                conn.onclose = function (evt) {
+                    console.log("Connection closed - ", evt)
+                };
+                conn.onmessage = function (evt) {
+                    //msgt = evt.data.split(`\n`);
+                    msgEvt = JSON.parse(evt.data)
+                    console.log("MSG: ", msgEvt)
+                    appendChat(msgEvt);
+                };
+            } else {
+                console.log("Your browser does not support WebSockets.")
+            }
+        }
+    </script>
+</body>
+
+</html>

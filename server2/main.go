@@ -64,8 +64,8 @@ func main() {
 	go tcpCom()
 
 	// Iniciar o servidor na porta 8000 no localhost.
-	log.Println("ChatGO Iniciado na porta :8000")
-	err := http.ListenAndServe(":8000", nil)
+	log.Println("ChatGO Iniciado na porta :8001")
+	err := http.ListenAndServe(":8001", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
