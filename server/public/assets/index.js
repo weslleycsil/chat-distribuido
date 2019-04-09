@@ -40,16 +40,22 @@ function enterChat() {
         username: document.getElementById("inputUser").value,
         room: 'root',
     };
+    var rooms = [];
+
     localStorage.setItem('objChat', JSON.stringify(chat));
+    localStorage.setItem('rooms', JSON.stringify(rooms));
     obj.Username = chat.username;
     obj.Message = "mudar nome";
     obj.Email = chat.email;
     obj.Event = 'change';
     sendMsg(obj);
-    obj.Message = "adicionar sala";
-    obj.Room = 'root';
-    obj.Event = 'add';
-    sendMsg(obj)
+    setTimeout(func => {
+        obj.Message = "adicionar sala";
+        obj.Room = 'root';
+        obj.Event = 'add';
+        sendMsg(obj)
+    }, 3000);
+    
     //console.log('Enter Chat!');
     $('#enter').modal('hide');
 };
@@ -112,7 +118,7 @@ function appendChat(m){
 function appendRoom(room){
     var item = document.createElement("li");
     var a = document.createElement("a");
-    a.src = "javascript:abrirSala('"+'Nome da Sala'+"')";
+    a.href = "javascript:abrirSala('"+room+"')";
     a.innerText = 'Sala #'+room;
     item.appendChild(a);
     roomList.appendChild(item);
@@ -130,6 +136,26 @@ function addMsg(msg){
     msgs.push(msg);
     console.log(msgs)
     localStorage.setItem(msg.room, JSON.stringify(msgs));
+}
+
+function addSala(sala){
+    var salas = JSON.parse(localStorage.getItem("rooms"));
+    if(salas == null){
+        salas = [];
+    }
+    s = salas.find(function(element) {
+        return element == sala;
+    })
+    if(s == null){
+        //posso criar a sala
+        salas.push(sala);
+        appendRoom(sala);
+    }
+    localStorage.setItem("rooms", JSON.stringify(salas));
+}
+
+function abrirSala(sala){
+    
 }
 
 function Enviar(){
@@ -151,12 +177,16 @@ window.onload = function () {
         conn = new WebSocket("ws://" + document.location.host + "/ws");
         conn.onclose = function (evt) {
             console.log("Connection closed - ", evt)
+            //disparar reconexão com o socket
         };
         conn.onmessage = function (evt) {
             msgEvt = JSON.parse(evt.data)
             if(msgEvt.event == "msg"){
                 appendChat(msgEvt);
                 addMsg(msgEvt);
+            } else if(msgEvt.event == "command" && msgEvt.message == "add sala"){
+                //adicionar sala ao array de salas
+                addSala(msgEvt.room)
             } else {
                 // tratar outros tipos de mensagens
                 console.log(msgEvt)
