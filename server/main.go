@@ -52,6 +52,15 @@ var (
 
 // Função principal.
 func main() {
+	//comunicaçao entre servidores
+	con, err2 := net.Dial("tcp", "localhost:8081")
+
+	if err2 != nil {
+		fmt.Println("Server not found.")
+	}
+	go tcpWrite(con)
+	go tcpRead(con)
+
 	// Serviço para a App WEB.
 	fs := http.FileServer(http.Dir("./public"))
 	http.Handle("/", fs)
@@ -61,7 +70,6 @@ func main() {
 
 	// Ouvir mensagens que entram no channel broadcast.
 	go handleMessages()
-	go tcpCom()
 
 	// Iniciar o servidor na porta 8000 no localhost.
 	log.Println("ChatGO Iniciado na porta :8000")
@@ -69,15 +77,6 @@ func main() {
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
-
-	//comunicaçao entre servidores
-	con, err := net.Dial("tcp", "127.0.0.1:8081")
-
-	if err != nil {
-		fmt.Println("Server not found.")
-	}
-	go tcpWrite(con)
-	go tcpRead(con)
 }
 
 /*
@@ -313,15 +312,16 @@ func refreshRooms(name string) {
 	broadcast <- m
 }
 
-func tcpWrite(conn net.Conn){
+func tcpWrite(conn net.Conn) {
 	defer func() {
-		con.Close()
+		conn.Close()
 	}()
 	for {
 		writeStr := <-broadcastTCP
+		fmt.Println("WriteStr: %s", writeStr)
 		bolB, _ := json.Marshal(writeStr)
-
-		in, err := con.Write(bolB)
+		fmt.Println("bolB: %s", string(bolB))
+		in, err := conn.Write(bolB)
 		if err != nil {
 			fmt.Printf("Error when send to server: %d\n", in)
 		}
