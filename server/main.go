@@ -53,7 +53,7 @@ var (
 // Função principal.
 func main() {
 	//comunicaçao entre servidores
-	con, err2 := net.Dial("tcp", "localhost:8081")
+	con, err2 := net.Dial("tcp", "hub:8081")
 
 	if err2 != nil {
 		fmt.Println("Server not found.")

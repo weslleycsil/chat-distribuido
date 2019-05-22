@@ -115,6 +115,7 @@ function appendChat(m){
     chat.appendChild(div)
 }
 
+
 function appendRoom(room){
     var item = document.createElement("li");
     var a = document.createElement("a");
@@ -155,7 +156,21 @@ function addSala(sala){
 }
 
 function abrirSala(sala){
-    
+    obj.Room = sala;
+    c = chat.children;
+    for (i = 0; i < c.length; i++) {
+        if(c[i].nodeName == "DIV"){
+            chat.removeChild(c[i]);
+        }
+    }
+    //adicionar msg das salas
+    /*var msgs = JSON.parse(localStorage.getItem(sala));
+    if(msgs == null){
+        msgs = [];
+    }
+    msgs.forEach(element => {
+        appendChat(element);
+    });*/
 }
 
 function Enviar(){
