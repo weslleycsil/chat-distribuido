@@ -53,13 +53,20 @@ var (
 // Função principal.
 func main() {
 	//comunicaçao entre servidores
-	con, err2 := net.Dial("tcp", "hub:8081")
+	groupAdm := "224.30.30.30:9999"
+	Addr, _ := net.ResolveUDPAddr("udp", groupAdm)
+	conn, err2 := net.DialUDP("udp", nil, Addr)
+	connListen, err3 := net.ListenMulticastUDP("udp", nil, Addr)
 
 	if err2 != nil {
 		fmt.Println("Server not found.")
 	}
-	go tcpWrite(con)
-	go tcpRead(con)
+	if err3 != nil {
+		fmt.Println("Server not found Listen.")
+	}
+
+	go udpWrite(conn)
+	go udpRead(connListen)
 
 	// Serviço para a App WEB.
 	fs := http.FileServer(http.Dir("./public"))
@@ -312,10 +319,7 @@ func refreshRooms(name string) {
 	broadcast <- m
 }
 
-func tcpWrite(conn net.Conn) {
-	defer func() {
-		conn.Close()
-	}()
+func udpWrite(conn *net.UDPConn) {
 	for {
 		writeStr := <-broadcastTCP
 		fmt.Println("WriteStr: %s", writeStr)
@@ -327,10 +331,11 @@ func tcpWrite(conn net.Conn) {
 		}
 
 	}
+
 }
-func tcpRead(conn net.Conn) {
+func udpRead(connListen *net.UDPConn) {
 	for {
-		length, err := conn.Read(readStr)
+		length, _, err := connListen.ReadFromUDP(readStr)
 		if err != nil {
 			fmt.Printf("Error when read from server. Error:%s\n", err)
 		}
@@ -343,6 +348,7 @@ func tcpRead(conn net.Conn) {
 
 		handleTcp(msg)
 	}
+
 }
 
 func handleTcp(msg Message) {
