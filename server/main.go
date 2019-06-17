@@ -278,12 +278,12 @@ func manageMulticastGroup(groupName string) *net.UDPAddr {
 		// Não existe o canal desse grupo.
 		base  := "224.30.30.30"
 		port  := portGenerator()
-
 		PortManager[port] = groupName
 
 		groupAddrs := base + ":" + port
 		fmt.Println(groupAddrs)
 		Addr, _ := net.ResolveUDPAddr("udp", groupAddrs)
+		AddrManager[groupName] = Addr
 		return Addr
 	}
 }
