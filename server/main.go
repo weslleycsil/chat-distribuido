@@ -126,6 +126,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	//se a conexão estiver OK inicio a leitura do socket para obter informações
 	if c != nil {
 		go c.readSocket()
+		listRooms(c)
 	}
 
 }
@@ -316,20 +317,20 @@ func (c *Conn) Status(name string, s bool) {
 
 // Atualiza a listagem das salas
 func listRooms(conn *Conn) {
-	for _, room := range roonManager {
+	for _, room := range RoomManager {
 
 		msg := Message{
 			Email:    "email",
 			Username: "Servidor",
-			Message:  "attRoons",
-			Event:    "add",
+			Message:  "add sala",
+			Event:    "command",
 			Room:     room.Name,
 		}
-
+		log.Printf("Atualizando Sala %s", room.Name)
 		err := conn.Socket.WriteJSON(msg)
 		if err != nil {
 			log.Printf("error: %v", err)
-			client.Socket.Close()
+			conn.Socket.Close()
 		}
 	}
 }
