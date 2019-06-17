@@ -3,7 +3,8 @@ var obj = {
     Username: '',
     Message: '',
     Event: '',
-    Room: ''
+    Room: '',
+    Server: ''
 };
 
 var conn; // conexao websocket
@@ -158,6 +159,7 @@ function addSala(sala){
 function abrirSala(sala){
     obj.Room = sala;
     c = chat.children;
+    console.log(c);
     for (i = 0; i < c.length; i++) {
         if(c[i].nodeName == "DIV"){
             chat.removeChild(c[i]);

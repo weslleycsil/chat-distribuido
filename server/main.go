@@ -1,4 +1,5 @@
 package main
+
 //testttttt
 import (
 	"encoding/json"
@@ -32,6 +33,7 @@ type Message struct {
 	Message  string `json:"message"`
 	Event    string `json:"event"`
 	Room     string `json:"room"`
+	Server   string `json:"server"`
 }
 
 // Declaração de variáveis.
@@ -40,8 +42,10 @@ var (
 	RoomManager  = make(map[string]*Room) // Armazena todas as ROOMs pelo Nome.
 	broadcast    = make(chan Message)     // Chanal responsavel pela transmissão das mensagens.
 	broadcastTCP = make(chan Message)     // Chanal responsavel pela transmissão das mensagens.
+	id, _        = uuid.NewRandom()
+	idServer     = id.String()
 
-	//tcp entre servidores
+	//udp entre servidores
 	readStr = make([]byte, 1024)
 
 	// Atualiza uma conexao HTTP para Web Socket
@@ -79,6 +83,7 @@ func main() {
 	go handleMessages()
 
 	// Iniciar o servidor na porta 8000 no localhost.
+	log.Println("UUID Server: ", idServer) //mostra o UUID do servidor
 	log.Println("ChatGO Iniciado na porta :8000")
 	err := http.ListenAndServe(":8000", nil)
 	if err != nil {
@@ -155,6 +160,8 @@ func (c *Conn) readSocket() {
 
 // Gerencia dos eventos.
 var HandleData = func(c *Conn, msg Message) {
+
+	msg.Server = idServer
 
 	switch msg.Event {
 	case "add":
@@ -275,6 +282,7 @@ func (c *Conn) ChangeUser(user string) {
 			Message:  c.User + " mudou para " + user,
 			Event:    "msg",
 			Room:     room.Name,
+			Server:   idServer,
 		}
 
 		broadcast <- m
@@ -299,6 +307,7 @@ func (c *Conn) Status(name string, s bool) {
 		Message:  user + " " + action,
 		Event:    "msg",
 		Room:     name,
+		Server:   idServer,
 	}
 
 	broadcast <- m
@@ -314,6 +323,7 @@ func refreshRooms(name string) {
 		Message:  "add sala",
 		Event:    "command",
 		Room:     name,
+		Server:   idServer,
 	}
 	log.Printf("Aviso de nova sala criada")
 	broadcast <- m
@@ -339,14 +349,14 @@ func udpRead(connListen *net.UDPConn) {
 		if err != nil {
 			fmt.Printf("Error when read from server. Error:%s\n", err)
 		}
-
 		str := string(readStr[:length])
-		log.Printf("ROLO: %S", str)
+		//log.Printf("ROLO: %S", str)
 		msg := Message{}
 		json.Unmarshal([]byte(str), &msg)
 		log.Printf("MSG!: %v", msg)
-
-		handleTcp(msg)
+		if msg.Server != idServer {
+			handleTcp(msg)
+		}
 	}
 
 }
