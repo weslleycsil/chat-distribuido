@@ -314,6 +314,26 @@ func (c *Conn) Status(name string, s bool) {
 	broadcastTCP <- m
 }
 
+// Atualiza a listagem das salas
+func listRooms(conn *Conn) {
+	for _, room := range roonManager {
+
+		msg := Message{
+			Email:    "email",
+			Username: "Servidor",
+			Message:  "attRoons",
+			Event:    "add",
+			Room:     room.Name,
+		}
+
+		err := conn.Socket.WriteJSON(msg)
+		if err != nil {
+			log.Printf("error: %v", err)
+			client.Socket.Close()
+		}
+	}
+}
+
 // Avisos do sistema [sala adicionada]
 func refreshRooms(name string) {
 
