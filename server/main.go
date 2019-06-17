@@ -1,12 +1,12 @@
 package main
 
-//testttttt
 import (
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -22,8 +22,9 @@ type Conn struct {
 
 // Define o objeto sala.
 type Room struct {
-	Name    string           // Identificador da sala.
-	Members map[string]*Conn // Endereço das conexões conectadas à está sala.
+	Name     string           // Identificador da sala.
+	Members  map[string]*Conn // Endereço das conexões conectadas à está sala.
+	AddrRoom *net.UDPAddr         // Endereço do canal multicast da sala.
 }
 
 // Define o objeto mensagem.
@@ -38,17 +39,22 @@ type Message struct {
 
 // Declaração de variáveis.
 var (
-	ConnManager  = make(map[string]*Conn) // Armazena todas as CONNs pelo ID.
-	RoomManager  = make(map[string]*Room) // Armazena todas as ROOMs pelo Nome.
-	broadcast    = make(chan Message)     // Chanal responsavel pela transmissão das mensagens.
-	broadcastTCP = make(chan Message)     // Chanal responsavel pela transmissão das mensagens.
-	id, _        = uuid.NewRandom()
+	
+	ConnManager  = make(map[string]*Conn)     // Armazena todas as CONNs pelo ID.
+	RoomManager  = make(map[string]*Room)     // Armazena todas as ROOMs pelo Nome.
+	AddrManager  = make(map[string]*net.UDPAddr)  // Armazena todos os endereços multicast pelo nome do grupo.
+	PortManager  = make(map[string]string)       // Arnazeba o nome dos grupos multicas pela porta.
+	broadcast    = make(chan Message)         // Canal responsavel pela transmissão das mensagens.
+	broadcastTCP = make(chan Message)         // Canal responsavel pela transmissão das mensagens.
+	
+	// Geracao do id de indetificacao de cada servidor.
+	id, _        = uuid.NewRandom()       
 	idServer     = id.String()
 
-	//udp entre servidores
+	//	Dados da trasmicao UDP entre servidores.
 	readStr = make([]byte, 1024)
 
-	// Atualiza uma conexao HTTP para Web Socket
+	// Atualiza uma conexao HTTP para Web Socket.
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -56,9 +62,10 @@ var (
 
 // Função principal.
 func main() {
-	//comunicaçao entre servidores
-	groupAdm := "224.30.30.30:9999"
-	Addr, _ := net.ResolveUDPAddr("udp", groupAdm)
+	// Comunicaçao entre servidores atravez de MulticastUDP
+	//groupAdm := "224.30.30.30:9999"
+	// Addr, _ := net.ResolveUDPAddr("udp", groupAdm)
+	Addr := manageMulticastGroup("Servers")
 	conn, err2 := net.DialUDP("udp", nil, Addr)
 	connListen, err3 := net.ListenMulticastUDP("udp", nil, Addr)
 
@@ -209,9 +216,10 @@ func handleMessages() {
 		room := RoomManager[msg.Room]
 
 		if len(room.Members) > 0 { // se tiver pessoas na sala
-			//loop criado com o intuito de enviar a mensagem para todas as conexões de uma determinada sala
+			//Loop criado com o intuito de enviar a mensagem para todas as conexões de uma determinada sala
 			for _, client := range room.Members {
 				log.Printf("MSG: %v", msg)
+				// Escrevo a mensagem para aquela conexao de socket
 				err := client.Socket.WriteJSON(msg)
 				if err != nil {
 					log.Printf("error: %v", err)
@@ -237,12 +245,55 @@ func (c *Conn) Join(name string) {
 
 	c.Status(name, false)
 }
+func portGenerator() string{
+	number    := 9999
+	strNumber := "1111"
+	port      := "0000"
+	for ; number > 1; number-- {
+		strNumber = strconv.Itoa(number)
+
+		if _, ok := PortManager[strNumber]; ok {
+			// Porta está em uso.
+			log.Printf("porta em uso, busca a proxima")
+		} else {
+			// Porta ociosa.
+			number = 1
+			log.Printf("porta sem uso, usar")
+		}
+	}
+	lenn := len(strNumber)
+	for lenn < 4 {
+		port = "0"+port
+		lenn = len(port)
+	}
+
+	return strNumber
+}
+
+func manageMulticastGroup(groupName string) *net.UDPAddr {
+	if _, ok := AddrManager[groupName]; ok {
+		// Já existe esse um canal para esse grupo.
+		return AddrManager[groupName]
+	} else {
+		// Não existe o canal desse grupo.
+		base  := "224.30.30.30"
+		port  := portGenerator()
+
+		PortManager[port] = groupName
+
+		groupAddrs := base + ":" + port
+		fmt.Println(groupAddrs)
+		Addr, _ := net.ResolveUDPAddr("udp", groupAddrs)
+		return Addr
+	}
+}
 
 // Cria uma nova ROOM.
 func NewRoom(name string) *Room {
 	r := &Room{
 		Name:    "root",
 		Members: make(map[string]*Conn),
+		AddrRoom: nil,
 	}
 	// A sala ja existe?
 	if _, ok := RoomManager[name]; ok {
@@ -252,11 +303,13 @@ func NewRoom(name string) *Room {
 
 		// O nome foi setado?
 	} else if name == "" {
+		r.AddrRoom = manageMulticastGroup(name)
 		RoomManager[name] = r
 		return r
 
 	} else {
 		r.Name = name
+		r.AddrRoom = manageMulticastGroup(name)
 		RoomManager[name] = r
 		//log.Printf("Salas: %v", RoomManager)
 		return r
