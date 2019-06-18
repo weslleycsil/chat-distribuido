@@ -24,7 +24,7 @@ type Conn struct {
 type Room struct {
 	Name     string           // Identificador da sala.
 	Members  map[string]*Conn // Endereço das conexões conectadas à está sala.
-	AddrRoom *net.UDPAddr         // Endereço do canal multicast da sala.
+	AddrRoom *net.UDPAddr     // Endereço do canal multicast da sala.
 }
 
 // Define o objeto mensagem.
@@ -39,17 +39,16 @@ type Message struct {
 
 // Declaração de variáveis.
 var (
-	
-	ConnManager  = make(map[string]*Conn)     // Armazena todas as CONNs pelo ID.
-	RoomManager  = make(map[string]*Room)     // Armazena todas as ROOMs pelo Nome.
-	AddrManager  = make(map[string]*net.UDPAddr)  // Armazena todos os endereços multicast pelo nome do grupo.
+	ConnManager  = make(map[string]*Conn)        // Armazena todas as CONNs pelo ID.
+	RoomManager  = make(map[string]*Room)        // Armazena todas as ROOMs pelo Nome.
+	AddrManager  = make(map[string]*net.UDPAddr) // Armazena todos os endereços multicast pelo nome do grupo.
 	PortManager  = make(map[string]string)       // Arnazeba o nome dos grupos multicas pela porta.
-	broadcast    = make(chan Message)         // Canal responsavel pela transmissão das mensagens.
-	broadcastTCP = make(chan Message)         // Canal responsavel pela transmissão das mensagens.
-	
+	broadcast    = make(chan Message)            // Canal responsavel pela transmissão das mensagens.
+	broadcastTCP = make(chan Message)            // Canal responsavel pela transmissão das mensagens.
+
 	// Geracao do id de indetificacao de cada servidor.
-	id, _        = uuid.NewRandom()       
-	idServer     = id.String()
+	id, _    = uuid.NewRandom()
+	idServer = id.String()
 
 	//	Dados da trasmicao UDP entre servidores.
 	readStr = make([]byte, 1024)
@@ -76,7 +75,9 @@ func main() {
 		fmt.Println("Server not found Listen.")
 	}
 
-	go udpWrite(conn)
+	// Mensagens Entre servidores
+	go udpWriteAdm(conn)
+	go udpWrite()
 	go udpRead(connListen)
 
 	// Serviço para a App WEB.
@@ -245,10 +246,10 @@ func (c *Conn) Join(name string) {
 
 	c.Status(name, false)
 }
-func portGenerator() string{
-	number    := 9999
+func portGenerator() string {
+	number := 9999
 	strNumber := "1111"
-	port      := "0000"
+	port := "0000"
 	for ; number > 1; number-- {
 		strNumber = strconv.Itoa(number)
 
@@ -263,7 +264,7 @@ func portGenerator() string{
 	}
 	lenn := len(strNumber)
 	for lenn < 4 {
-		port = "0"+port
+		port = "0" + port
 		lenn = len(port)
 	}
 
@@ -276,8 +277,8 @@ func manageMulticastGroup(groupName string) *net.UDPAddr {
 		return AddrManager[groupName]
 	} else {
 		// Não existe o canal desse grupo.
-		base  := "224.30.30.30"
-		port  := portGenerator()
+		base := "224.30.30.30"
+		port := portGenerator()
 		PortManager[port] = groupName
 
 		groupAddrs := base + ":" + port
@@ -291,8 +292,8 @@ func manageMulticastGroup(groupName string) *net.UDPAddr {
 // Cria uma nova ROOM.
 func NewRoom(name string) *Room {
 	r := &Room{
-		Name:    "root",
-		Members: make(map[string]*Conn),
+		Name:     "root",
+		Members:  make(map[string]*Conn),
 		AddrRoom: nil,
 	}
 	// A sala ja existe?
@@ -305,12 +306,14 @@ func NewRoom(name string) *Room {
 	} else if name == "" {
 		r.AddrRoom = manageMulticastGroup(name)
 		RoomManager[name] = r
+		go monitRoom(name)
 		return r
 
 	} else {
 		r.Name = name
 		r.AddrRoom = manageMulticastGroup(name)
 		RoomManager[name] = r
+		go monitRoom(name)
 		//log.Printf("Salas: %v", RoomManager)
 		return r
 
@@ -403,7 +406,7 @@ func refreshRooms(name string) {
 	broadcast <- m
 }
 
-func udpWrite(conn *net.UDPConn) {
+func udpWriteAdm(conn *net.UDPConn) {
 	for {
 		writeStr := <-broadcastTCP
 		fmt.Println("WriteStr: %s", writeStr)
@@ -417,6 +420,25 @@ func udpWrite(conn *net.UDPConn) {
 	}
 
 }
+
+//escrita nos multicast groups do canal broadcast
+func udpWrite() {
+	for {
+		writeStr := <-broadcast
+		sala := writeStr.Room
+		conn, _ := net.DialUDP("udp", nil, RoomManager[sala].AddrRoom)
+		fmt.Println("WriteStr: %s", writeStr)
+		bolB, _ := json.Marshal(writeStr)
+		fmt.Println("bolB: %s", string(bolB))
+		in, err := conn.Write(bolB)
+		if err != nil {
+			fmt.Printf("Error when send to server: %d\n", in)
+		}
+
+	}
+
+}
+
 func udpRead(connListen *net.UDPConn) {
 	for {
 		length, _, err := connListen.ReadFromUDP(readStr)
@@ -429,13 +451,13 @@ func udpRead(connListen *net.UDPConn) {
 		json.Unmarshal([]byte(str), &msg)
 		log.Printf("MSG!: %v", msg)
 		if msg.Server != idServer {
-			handleTcp(msg)
+			handleUDP(msg)
 		}
 	}
 
 }
 
-func handleTcp(msg Message) {
+func handleUDP(msg Message) {
 	log.Printf("MSG!: %v", msg)
 	switch msg.Event {
 	case "add":
@@ -444,5 +466,48 @@ func handleTcp(msg Message) {
 		refreshRooms(msg.Room)
 	default:
 		broadcast <- msg
+	}
+}
+
+// funcao disparada ao criar um grupo multicast
+//verifico se há membros na sala
+//se tiver eu escuto o grupo multicast
+//se nao tiver eu deixo de escutar
+func monitRoom(name string) {
+	r := RoomManager[name]
+	ch := false
+
+	done := make(chan struct{})
+
+	Addr := r.AddrRoom
+	connListen, _ := net.ListenMulticastUDP("udp", nil, Addr)
+
+	for {
+		if len(r.Members) > 0 && ch == false {
+			ch = true
+			fmt.Println("Monitorar Sala ", r.Name)
+			go func() {
+				for {
+					length, _, err := connListen.ReadFromUDP(readStr)
+					if err != nil {
+						fmt.Printf("Error when read from server. Error:%s\n", err)
+					}
+					str := string(readStr[:length])
+					//log.Printf("ROLO: %S", str)
+					msg := Message{}
+					json.Unmarshal([]byte(str), &msg)
+					log.Printf("MSG!: %v", msg)
+					if msg.Server != idServer {
+						handleUDP(msg)
+					}
+					close(done)
+				}
+			}()
+		}
+		if len(r.Members) < 1 && ch == true {
+			ch = false
+			fmt.Println("Parar Monitoramento da Sala ", r.Name)
+			<-done
+		}
 	}
 }
