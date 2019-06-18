@@ -43,6 +43,8 @@ function leaveRoom(){
     obj.Room = chat.Room;
     obj.Message = "sair da sala";
     sendMsg(obj);
+    var item = document.getElementById(chat.Room);
+    roomList.removeChild(item);
     console.log('Leave Room!');
     $('#leaveRoom').modal('hide');
 }
@@ -133,6 +135,7 @@ function appendChat(m){
 
 function appendRoom(room){
     var item = document.createElement("li");
+    item.id = room;
     var a = document.createElement("a");
     a.href = "javascript:abrirSala('"+room+"')";
     a.innerText = 'Sala #'+room;
@@ -174,19 +177,17 @@ function abrirSala(sala){
     obj.Room = sala;
     c = chat.children;
     console.log(c);
-    for (i = 0; i < c.length; i++) {
-        if(c[i].nodeName == "DIV"){
-            chat.removeChild(c[i]);
-        }
+    while(c.length > 1){
+        chat.removeChild(c[1]);
     }
     //adicionar msg das salas
-    /*var msgs = JSON.parse(localStorage.getItem(sala));
+    var msgs = JSON.parse(localStorage.getItem(sala));
     if(msgs == null){
         msgs = [];
     }
     msgs.forEach(element => {
         appendChat(element);
-    });*/
+    });
 }
 
 function Enviar(){
