@@ -47,7 +47,7 @@
                         <br>
                         <div class="media text-muted pt-3">
                             <ul id="Salas">
-                                <li><a href="javascript:abrirSala('Sala Teste')">Sala #Teste</a></li>
+                                <li id="teste"><a href="javascript:abrirSala('Sala Teste')">Sala #Teste</a></li>
                             </ul>
 
                         </div>
@@ -61,6 +61,11 @@
                     <div class="col">
                         <div class="my-3 p-3 bg-white rounded shadow-sm" id="chat">
                             <h6 class="border-bottom border-gray pb-2 mb-0">Room #</h6>
+                            <div class="media text-muted pt-3">
+                                <img src="" class="bd-placeholder-img mr-2 rounded" width="32" height="32" />
+                                <p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray"><strong
+                                        class="d-block text-gray-dark">@weslleycsil</strong>Simbora galera!</p>
+                            </div>
                         </div>
                     </div>
 
@@ -109,46 +114,48 @@
 
     <!-- Modal Criar Sala -->
     <div class="modal fade" id="NewRoom" tabindex="-1" role="dialog" aria-labelledby="modalNewRoom" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Criar uma Sala</h5>
-                    </div>
-                    <div class="modal-body">
-                        <label for="inputNewRoom" class="sr-only">Room#</label>
-                        <input type="text" id="inputNewRoom" class="form-control" placeholder="room#" required>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" onclick="newRoom();">Criar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <!-- FIM Modal Criar Sala -->
-
-    <!-- Modal Sair da Sala -->
-    <div class="modal fade" id="LeaveRoom" tabindex="-1" role="dialog" aria-labelledby="modalLeaveRoom" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">Criar uma Sala</h5>
                 </div>
                 <div class="modal-body">
-                    <label for="inputLeaveRoom" class="sr-only">Room#</label>
-                    <input type="text" id="inputLeaveRoom" class="form-control" placeholder="room#" required>
+                    <label for="inputNewRoom" class="sr-only">Room#</label>
+                    <input type="text" id="inputNewRoom" class="form-control" placeholder="room#" required>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="leaveRoom();">Criar</button>
+                    <button type="button" class="btn btn-primary" onclick="newRoom();">Criar</button>
                 </div>
             </div>
         </div>
     </div>
 
-<!-- FIM Modal Sair da Sala -->
+    <!-- FIM Modal Criar Sala -->
+
+    <!-- Modal Sair da Sala -->
+    <div class="modal fade" id="LeaveRoom" tabindex="-1" role="dialog" aria-labelledby="modalLeaveRoom"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Sair de uma Sala</h5>
+                </div>
+                <div class="modal-body">
+                    <label for="inputLeaveRoom" class="sr-only">Room#</label>
+                    <input type="text" id="inputLeaveRoom" class="form-control" placeholder="room#" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="leaveRoom();">Sair</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIM Modal Sair da Sala -->
 
     <!-- Modal Entrar na Sala -->
-    <div class="modal fade" id="joinRoom" tabindex="-1" role="dialog" aria-labelledby="modalJoinRoom" aria-hidden="true">
+    <div class="modal fade" id="joinRoom" tabindex="-1" role="dialog" aria-labelledby="modalJoinRoom"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -167,7 +174,8 @@
     <!-- FIM Modal Entrar na Sala -->
 
     <!-- Modal Change Nick -->
-    <div class="modal fade" id="changeNick" tabindex="-1" role="dialog" aria-labelledby="modalChangeNick" aria-hidden="true">
+    <div class="modal fade" id="changeNick" tabindex="-1" role="dialog" aria-labelledby="modalChangeNick"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">

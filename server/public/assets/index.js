@@ -18,22 +18,20 @@ function newRoom() {
     obj.Message = "adicionar sala";
     obj.Room = roomNew;
     sendMsg(obj);
-    console.log('New Room!');
     $('#NewRoom').modal('hide');
 };
 
 function joinRoom() {
     var chat = JSON.parse(localStorage.getItem('objChat'));
     chat.Room = document.getElementById("inputRoom").value;
-    localStorage.setItem('objChat', JSON.stringify(chat));
+    //localStorage.setItem('objChat', JSON.stringify(chat));
     //enviar msg para join new room
     obj.Event = 'join';
     obj.Room = chat.Room;
     obj.Message = "entrar em sala";
     sendMsg(obj);
-    console.log('Join Room!');
     $('#joinRoom').modal('hide');
-};
+}; // verificar funcao
 
 function leaveRoom(){
     chat.Room = document.getElementById("inputLeaveRoom").value;
@@ -45,9 +43,8 @@ function leaveRoom(){
     sendMsg(obj);
     var item = document.getElementById(chat.Room);
     roomList.removeChild(item);
-    console.log('Leave Room!');
     $('#leaveRoom').modal('hide');
-}
+}; // OK
 
 function enterChat() {
     var chat = {
@@ -84,7 +81,6 @@ function changeUsername() {
     obj.Username = chat.Username;
     obj.Message = "mudar nome";
     sendMsg(obj);
-    console.log('Change Username!');
     $('#changeNick').modal('hide');
 };
 
@@ -98,7 +94,7 @@ function abrirPopup(n){
     } else if (n ==4){
         $('#LeaveRoom').modal('show')
     }
-}
+};
 
 function sendMsg(msg) {
     if (!conn) {
@@ -130,8 +126,7 @@ function appendChat(m){
     div.appendChild(img);
     div.appendChild(p);
     chat.appendChild(div)
-}
-
+};
 
 function appendRoom(room){
     var item = document.createElement("li");
@@ -141,11 +136,11 @@ function appendRoom(room){
     a.innerText = 'Sala #'+room;
     item.appendChild(a);
     roomList.appendChild(item);
-}
+};
 
 function gravatar(email) {
     return 'http://www.gravatar.com/avatar/' + md5(email);
-}
+};
 
 function addMsg(msg){
     var msgs = JSON.parse(localStorage.getItem(msg.room));
@@ -153,9 +148,8 @@ function addMsg(msg){
         msgs = [];
     }
     msgs.push(msg);
-    console.log(msgs)
     localStorage.setItem(msg.room, JSON.stringify(msgs));
-}
+};
 
 function addSala(sala){
     var salas = JSON.parse(localStorage.getItem("rooms"));
@@ -175,12 +169,15 @@ function addSala(sala){
 
 function abrirSala(sala){
     obj.Room = sala;
+    //verificar se já esta na sala ou nao
+    //se nao, join room
+
+    //apagas as msg da tela
     c = chat.children;
-    console.log(c);
     while(c.length > 1){
         chat.removeChild(c[1]);
     }
-    //adicionar msg das salas
+    //adicionar msg das salas na tela
     var msgs = JSON.parse(localStorage.getItem(sala));
     if(msgs == null){
         msgs = [];
@@ -195,11 +192,11 @@ function Enviar(){
         return false;
     }
     var chat = JSON.parse(localStorage.getItem('objChat'));
+    obj.Room = chat.room;
     obj.Message = document.getElementById("msg").value;
     obj.Event = "msg";
     sendMsg(obj);
     document.getElementById("msg").value = "";
-    console.log('Msg Enviada!')
     return true;
 }
 
