@@ -24,10 +24,10 @@
         <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="javascript:abrirPopup(1)">Nova Sala<span class="sr-only"></span></a>
+                    <a class="nav-link" href="javascript:abrirPopup(1)">Criar Sala<span class="sr-only"></span></a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="javascript:abrirPopup(2)">Entra na Sala <span class="sr-only"></span></a>
+                    <a class="nav-link" href="javascript:abrirPopup(2)">Listar Salas<span class="sr-only"></span></a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="javascript:abrirPopup(4)">Sair da Sala <span class="sr-only"></span></a>
@@ -42,7 +42,7 @@
         <div class="row">
             <div class="col-4">
                 <div class="my-3 p-3 bg-white rounded shadow-sm" id="lateral">
-                    <h6 class="border-bottom border-gray pb-2 mb-0">Salas #</h6>
+                    <h6 class="border-bottom border-gray pb-2 mb-0">Salas Ativas #</h6>
                     <div class="form-inline mt-2 mt-md-0">
                         <br>
                         <div class="media text-muted pt-3">
@@ -59,13 +59,24 @@
             <div class="col-8">
                 <div class="row">
                     <div class="col">
+                        <div class="d-flex align-items-center p-3 my-3 text-white-50 rounded shadow-sm" style="background-color: 6f42c1;">
+                            <img class="mr-3" src="https://getbootstrap.com/docs/4.3/assets/brand/bootstrap-outline.svg" alt="" width="48"
+                                height="48">
+                            <div class="lh-100">
+                                <h6 class="mb-0 text-white lh-100">Bootstrap</h6>
+                                <small>Since 2011</small>
+                            </div>
+                        </div>
                         <div class="my-3 p-3 bg-white rounded shadow-sm" id="chat">
-                            <h6 class="border-bottom border-gray pb-2 mb-0">Room #</h6>
+                            <h6 class="border-bottom border-gray pb-2 mb-0">Conversas</h6>
                             <div class="media text-muted pt-3">
                                 <img src="" class="bd-placeholder-img mr-2 rounded" width="32" height="32" />
                                 <p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray"><strong
                                         class="d-block text-gray-dark">@weslleycsil</strong>Simbora galera!</p>
                             </div>
+                            <small class="d-block text-right mt-3">
+                                <a href="javascript:leaveRoom()">Sair da Sala</a>
+                            </small>
                         </div>
                     </div>
 

@@ -11,56 +11,39 @@ var conn; // conexao websocket
 var chat = document.getElementById("chat");
 var roomList = document.getElementById("Salas");
 
-function newRoom() {
-    //criar uma nova sala
-    var roomNew = document.getElementById("inputNewRoom").value;
-    obj.Event = 'add';
-    obj.Message = "adicionar sala";
-    obj.Room = roomNew;
-    sendMsg(obj);
-    $('#NewRoom').modal('hide');
-};
+/**
+ * Local Storage Gabarito
+ * Objetos: ObjChat, rooms, nomeDaSala
+ * 
+ * ObjChat -> {"Username": "nome de usuario", "Email": "email do usuario", "RoomActive": "sala ativa"}
+ * nomeDaSala -> [{email: "email", username: "Servidor", message: "Cleiton Entrou.", event: "msg", room: "root"}]
+ * Rooms -> ["root","room2"]
+ * 
+ */
 
-function joinRoom() {
-    var chat = JSON.parse(localStorage.getItem('objChat'));
-    chat.Room = document.getElementById("inputRoom").value;
-    //localStorage.setItem('objChat', JSON.stringify(chat));
-    //enviar msg para join new room
-    obj.Event = 'join';
-    obj.Room = chat.Room;
-    obj.Message = "entrar em sala";
-    sendMsg(obj);
-    $('#joinRoom').modal('hide');
-}; // verificar funcao
-
-function leaveRoom(){
-    chat.Room = document.getElementById("inputLeaveRoom").value;
-    localStorage.removeItem('objChat');
-    //enviar msg para join new room
-    obj.Event = 'leave';
-    obj.Room = chat.Room;
-    obj.Message = "sair da sala";
-    sendMsg(obj);
-    var item = document.getElementById(chat.Room);
-    roomList.removeChild(item);
-    $('#leaveRoom').modal('hide');
-}; // OK
-
+/**
+ * Verificar Funcionamento
+ * 
+ * Função com o intuito de iniciar todo o chat
+ * envia o pedido para mudar o username
+ * envia o pedido para criar a sala root
+ */
 function enterChat() {
-    var chat = {
-        email: document.getElementById("inputEmail").value,
-        username: document.getElementById("inputUser").value,
-        room: 'root',
+    var ObjChat = {
+        Username: document.getElementById("inputUser").value,
+        Email: document.getElementById("inputEmail").value,
+        RoomActive: 'root',
     };
-    var rooms = [];
+    var Rooms = ['root'];
 
-    localStorage.setItem('objChat', JSON.stringify(chat));
-    localStorage.setItem('rooms', JSON.stringify(rooms));
-    obj.Username = chat.username;
+    localStorage.setItem('ObjChat', JSON.stringify(ObjChat));
+    localStorage.setItem('Rooms', JSON.stringify(Rooms));
+    obj.Username = ObjChat.Username;
     obj.Message = "mudar nome";
-    obj.Email = chat.email;
+    obj.Email = ObjChat.Email;
     obj.Event = 'change';
     sendMsg(obj);
+
     setTimeout(func => {
         obj.Message = "adicionar sala";
         obj.Room = 'root';
@@ -72,18 +55,12 @@ function enterChat() {
     $('#enter').modal('hide');
 };
 
-function changeUsername() {
-    var chat = JSON.parse(localStorage.getItem('objChat'));
-    chat.Username = document.getElementById("inputUsername").value;
-    localStorage.setItem('objChat', JSON.stringify(chat));
-    //enviar msg para join new room
-    obj.Event = 'change';
-    obj.Username = chat.Username;
-    obj.Message = "mudar nome";
-    sendMsg(obj);
-    $('#changeNick').modal('hide');
-};
-
+/**
+ * Função para abrir uma determinada PopUp
+ * Funcionamento OK
+ * 
+ * @param {int} n numero da popup a ser aberta
+ */
 function abrirPopup(n){
     if(n == 1){
         $('#NewRoom').modal('show')
@@ -96,6 +73,12 @@ function abrirPopup(n){
     }
 };
 
+/**
+ * Função genérica para envio de mensagens para o websocket
+ * Funcionamento OK
+ * 
+ * @param {*} msg 
+ */
 function sendMsg(msg) {
     if (!conn) {
         return false;
@@ -107,6 +90,116 @@ function sendMsg(msg) {
     return true;
 };
 
+/**
+ * Função para retornar a url da imagem do avatar
+ * Funcionamento OK
+ * 
+ * @param {string} email 
+ */
+function gravatar(email) {
+    return 'http://www.gravatar.com/avatar/' + md5(email);
+};
+
+/**
+ * Função para deixar uma determinada Sala Ativa
+ * Você não sai da Sala Root
+ * Funcionamento (falta pular para a sala root)
+ */
+function leaveRoom(){
+    var ObjChat = JSON.parse(localStorage.getItem('ObjChat'));
+    if(ObjChat.RoomActive == 'root'){
+        alert('Você não pode sair da Sala Root');
+        return false
+    }
+    var Rooms = JSON.parse(localStorage.getItem('Rooms'));
+    const i = Rooms.indexOf(ObjChat.RoomActive)
+    NewRooms = Rooms.splice(i,1);
+    localStorage.setItem('Rooms', JSON.stringify(NewRooms));
+    obj.Event = 'leave';
+    obj.Room = ObjChat.RoomActive;
+    obj.Message = "sair da sala";
+    var item = document.getElementById(ObjChat.RoomActive);
+    roomList.removeChild(item);
+    sendMsg(obj);
+    // mudar para a sala root
+
+}
+
+/**
+ * Função para Criar uma nova Sala
+ * Sempre que eu crio uma sala, eu também entro nela
+ * Funcionamento OK
+ */
+function newRoom() {
+    //criar uma nova sala
+    var roomNew = document.getElementById("inputNewRoom").value;
+    obj.Event = 'add';
+    obj.Message = "adicionar sala";
+    obj.Room = roomNew;
+    sendMsg(obj);
+    $('#NewRoom').modal('hide');
+};
+
+/**
+ * Função para entrar em um sala que eu ainda não entrei
+ * @param {string} nome 
+ */
+function joinRoom(nome) {
+    //verifico se já estou na sala
+    var Rooms = JSON.parse(localStorage.getItem('Rooms'));
+    const i = Rooms.indexOf(nome);
+    if(i != -1){
+        alert("Você já está nessa sala!")
+        return false;
+    }
+    //se não, eu entro na sala
+    Rooms.push(nome);
+    localStorage.setItem('Rooms', JSON.stringify(Rooms));
+    //enviar msg para join new room
+    obj.Event = 'join';
+    obj.Room = nome;
+    obj.Message = "entrar em sala";
+    sendMsg(obj);
+    $('#joinRoom').modal('hide');
+};
+
+/**
+ * Função para mudar o Username
+ */
+function changeUsername() {
+    var ObjChat = JSON.parse(localStorage.getItem('ObjChat'));
+    ObjChat.Username = document.getElementById("inputUsername").value;
+    localStorage.setItem('ObjChat', JSON.stringify(ObjChat));
+    //enviar msg para join new room
+    obj.Event = 'change';
+    obj.Room = ObjChat.RoomActive;
+    obj.Username = chat.Username;
+    obj.Message = "mudar nome";
+    sendMsg(obj);
+    $('#changeNick').modal('hide');
+};
+
+/**
+ * Função para adicionar a função sair da sala ao rodape do chat
+ * Funcionamento OK
+ */
+function appendSair(){
+    var small = document.createElement("small");
+    small.className = "d-block text-right mt-3";
+    var a = document.createElement("a");
+    a.href = "javascript:leaveRoom()";
+    a.innerText = 'Sair da Sala';
+    small.appendChild(a);
+    chat.appendChild(small);
+}
+
+
+
+/**
+ * Função para adicionar conversas no chat
+ * @param {*} m 
+ * Funcionamento OK
+ */
 function appendChat(m){
     var div = document.createElement("div");
     div.className = "media text-muted pt-3";
@@ -128,6 +221,8 @@ function appendChat(m){
     chat.appendChild(div)
 };
 
+
+
 function appendRoom(room){
     var item = document.createElement("li");
     item.id = room;
@@ -136,11 +231,9 @@ function appendRoom(room){
     a.innerText = 'Sala #'+room;
     item.appendChild(a);
     roomList.appendChild(item);
-};
+}; // verificar se já existe a sala antes de adicionar na lista
 
-function gravatar(email) {
-    return 'http://www.gravatar.com/avatar/' + md5(email);
-};
+
 
 function addMsg(msg){
     var msgs = JSON.parse(localStorage.getItem(msg.room));
@@ -174,7 +267,7 @@ function abrirSala(sala){
 
     //apagas as msg da tela
     c = chat.children;
-    while(c.length > 1){
+    while(c.length > 2 && c[1].nodeName == "DIV"){
         chat.removeChild(c[1]);
     }
     //adicionar msg das salas na tela
@@ -210,6 +303,7 @@ window.onload = function () {
         };
         conn.onmessage = function (evt) {
             msgEvt = JSON.parse(evt.data)
+            console.log("Nova MSG recebida: ", msgEvt)
             if(msgEvt.event == "msg"){
                 appendChat(msgEvt);
                 addMsg(msgEvt);
