@@ -35,6 +35,18 @@ function joinRoom() {
     $('#joinRoom').modal('hide');
 };
 
+function leaveRoom(){
+    chat.Room = document.getElementById("inputLeaveRoom").value;
+    localStorage.removeItem('objChat');
+    //enviar msg para join new room
+    obj.Event = 'leave';
+    obj.Room = chat.Room;
+    obj.Message = "sair da sala";
+    sendMsg(obj);
+    console.log('Leave Room!');
+    $('#leaveRoom').modal('hide');
+}
+
 function enterChat() {
     var chat = {
         email: document.getElementById("inputEmail").value,
@@ -81,6 +93,8 @@ function abrirPopup(n){
         $('#joinRoom').modal('show')
     } else if (n ==3){
         $('#changeNick').modal('show')
+    } else if (n ==4){
+        $('#LeaveRoom').modal('show')
     }
 }
 

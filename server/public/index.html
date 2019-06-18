@@ -30,6 +30,9 @@
                     <a class="nav-link" href="javascript:abrirPopup(2)">Entra na Sala <span class="sr-only"></span></a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" href="javascript:abrirPopup(4)">Sair da Sala <span class="sr-only"></span></a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="javascript:abrirPopup(3)">Mudar Nick<span class="sr-only"></span></a>
                 </li>
             </ul>
@@ -123,6 +126,26 @@
         </div>
 
     <!-- FIM Modal Criar Sala -->
+
+    <!-- Modal Sair da Sala -->
+    <div class="modal fade" id="LeaveRoom" tabindex="-1" role="dialog" aria-labelledby="modalLeaveRoom" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Criar uma Sala</h5>
+                </div>
+                <div class="modal-body">
+                    <label for="inputLeaveRoom" class="sr-only">Room#</label>
+                    <input type="text" id="inputLeaveRoom" class="form-control" placeholder="room#" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="leaveRoom();">Criar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- FIM Modal Sair da Sala -->
 
     <!-- Modal Entrar na Sala -->
     <div class="modal fade" id="joinRoom" tabindex="-1" role="dialog" aria-labelledby="modalJoinRoom" aria-hidden="true">

@@ -477,7 +477,7 @@ func monitRoom(name string) {
 	r := RoomManager[name]
 	ch := false
 
-	done := make(chan struct{})
+	done := make(chan int)
 
 	Addr := r.AddrRoom
 	connListen, _ := net.ListenMulticastUDP("udp", nil, Addr)
@@ -500,14 +500,17 @@ func monitRoom(name string) {
 					if msg.Server != idServer {
 						handleUDP(msg)
 					}
-					close(done)
+					_, ok := <-done
+					if !ok {
+						return
+					}
 				}
 			}()
 		}
 		if len(r.Members) < 1 && ch == true {
 			ch = false
 			fmt.Println("Parar Monitoramento da Sala ", r.Name)
-			<-done
+			close(done)
 		}
 	}
 }
