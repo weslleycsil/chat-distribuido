@@ -134,7 +134,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	//se a conexão estiver OK inicio a leitura do socket para obter informações
 	if c != nil {
 		go c.readSocket()
-		listRooms(c)
+		listRooms()
 	}
 
 }
@@ -372,23 +372,30 @@ func (c *Conn) Status(name string, s bool) {
 }
 
 // Atualiza a listagem das salas
-func listRooms(conn *Conn) {
-	for _, room := range RoomManager {
+func listRooms()  []string{
+	// Numero de salas no sistema.
+	tam := len(RoomManager)
+	ArrayRooms := make([]string, tam)
 
-		msg := Message{
-			Email:    "email",
-			Username: "Servidor",
-			Message:  "add sala",
-			Event:    "command",
-			Room:     room.Name,
-		}
-		log.Printf("Atualizando Sala %s", room.Name)
-		err := conn.Socket.WriteJSON(msg)
-		if err != nil {
-			log.Printf("error: %v", err)
-			conn.Socket.Close()
-		}
+	for _, room := range RoomManager {
+		ArrayRooms = append(ArrayRooms, room.Name)
 	}
+	fmt.Println(ArrayRooms)
+	return ArrayRooms
+}
+
+// Atualiza a listagem das membros na sala
+func listMembers(RoomName string)  []string{
+	sala := RoomManager[RoomName]
+	// Numero de membros naquela sala.
+	tam := len(sala.Members)
+	ArrayMembers := make([]string, tam)
+
+	for _, member := range sala.Members {
+		ArrayMembers = append(ArrayMembers, member.User)
+	}
+	fmt.Println(ArrayMembers)
+	return ArrayMembers
 }
 
 // Avisos do sistema [sala adicionada]
