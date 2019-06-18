@@ -74,7 +74,9 @@ func main() {
 	if err3 != nil {
 		fmt.Println("Server not found Listen.")
 	}
-
+	// Prepara a sala Root
+	_ : NewRoom("root")
+	
 	// Mensagens Entre servidores
 	go udpWriteAdm(conn)
 	go udpWrite()
