@@ -75,8 +75,9 @@ func main() {
 		fmt.Println("Server not found Listen.")
 	}
 	// Prepara a sala Root
-	_ : NewRoom("root")
-	
+_:
+	NewRoom("root")
+
 	// Mensagens Entre servidores
 	go udpWriteAdm(conn)
 	go udpWrite()
@@ -136,7 +137,8 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	//se a conexão estiver OK inicio a leitura do socket para obter informações
 	if c != nil {
 		go c.readSocket()
-		listRooms()
+		c.Join("root")
+		//listRooms()
 	}
 
 }
@@ -374,7 +376,7 @@ func (c *Conn) Status(name string, s bool) {
 }
 
 // Atualiza a listagem das salas
-func listRooms()  []string{
+func listRooms() []string {
 	// Numero de salas no sistema.
 	tam := len(RoomManager)
 	ArrayRooms := make([]string, tam)
@@ -387,7 +389,7 @@ func listRooms()  []string{
 }
 
 // Atualiza a listagem das membros na sala
-func listMembers(RoomName string)  []string{
+func listMembers(RoomName string) []string {
 	sala := RoomManager[RoomName]
 	// Numero de membros naquela sala.
 	tam := len(sala.Members)

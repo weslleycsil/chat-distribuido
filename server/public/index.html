@@ -47,7 +47,7 @@
                         <br>
                         <div class="media text-muted pt-3">
                             <ul id="Salas">
-                                <li id="teste"><a href="javascript:abrirSala('Sala Teste')">Sala #Teste</a></li>
+                                <li id="root"><a href="javascript:abrirSala('root')">Sala #Root</a></li>
                             </ul>
 
                         </div>
@@ -144,7 +144,7 @@
     <!-- FIM Modal Criar Sala -->
 
     <!-- Modal Sair da Sala -->
-    <div class="modal fade" id="LeaveRoom" tabindex="-1" role="dialog" aria-labelledby="modalLeaveRoom"
+    <div class="modal fade" id="ListUsersRoom" tabindex="-1" role="dialog" aria-labelledby="modalListUsersRoom"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -152,11 +152,11 @@
                     <h5 class="modal-title" id="exampleModalLabel">Sair de uma Sala</h5>
                 </div>
                 <div class="modal-body">
-                    <label for="inputLeaveRoom" class="sr-only">Room#</label>
-                    <input type="text" id="inputLeaveRoom" class="form-control" placeholder="room#" required>
+                    <label for="inputListUsersRoom" class="sr-only">Room#</label>
+                    <input type="text" id="inputListUsersRoom" class="form-control" placeholder="room#" required>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="leaveRoom();">Sair</button>
+                    <button type="button" class="btn btn-primary" onclick="ListUsersRoom();">Sair</button>
                 </div>
             </div>
         </div>
