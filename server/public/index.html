@@ -2,7 +2,7 @@
 
 <head>
     <title>
-        Web in Sockets
+        MagnusWeb
     </title>
     <!-- Required meta tags -->
     <meta charset="utf-8">
@@ -16,7 +16,7 @@
 <body>
 
     <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
-        <a class="navbar-brand" href="#">Chat Go Socket</a>
+        <a class="navbar-brand" href="#">MagnusWeb</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
             aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -30,7 +30,7 @@
                     <a class="nav-link" href="javascript:abrirPopup(2)">Listar Salas<span class="sr-only"></span></a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="javascript:abrirPopup(4)">Sair da Sala <span class="sr-only"></span></a>
+                    <a class="nav-link" href="javascript:abrirPopup(4)">Listar Usuarios<span class="sr-only"></span></a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="javascript:abrirPopup(3)">Mudar Nick<span class="sr-only"></span></a>
@@ -47,7 +47,7 @@
                         <br>
                         <div class="media text-muted pt-3">
                             <ul id="Salas">
-                                <li id="root"><a href="javascript:abrirSala('root')">Sala #Root</a></li>
+                                <li id="root"><a href="javascript:abrirSala('root')">#Root</a></li>
                             </ul>
 
                         </div>
@@ -59,24 +59,21 @@
             <div class="col-8">
                 <div class="row">
                     <div class="col">
-                        <div class="d-flex align-items-center p-3 my-3 text-white-50 rounded shadow-sm" style="background-color: 6f42c1;">
-                            <img class="mr-3" src="https://getbootstrap.com/docs/4.3/assets/brand/bootstrap-outline.svg" alt="" width="48"
-                                height="48">
+                        <div class=" p-3 my-3 text-white-50 rounded shadow-sm" style="background-color: #343a40;">
                             <div class="lh-100">
-                                <h6 class="mb-0 text-white lh-100">Bootstrap</h6>
-                                <small>Since 2011</small>
+                                <h6 class="mb-0 text-white lh-100" id="namesala">Sala #Root</h6>
                             </div>
+                                <small class="d-block text-right mt-3">
+                                    <a href="javascript:leaveRoom()">Sair da Sala</a>
+                                </small>
                         </div>
                         <div class="my-3 p-3 bg-white rounded shadow-sm" id="chat">
                             <h6 class="border-bottom border-gray pb-2 mb-0">Conversas</h6>
-                            <div class="media text-muted pt-3">
+                            <!--<div class="media text-muted pt-3">
                                 <img src="" class="bd-placeholder-img mr-2 rounded" width="32" height="32" />
                                 <p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray"><strong
                                         class="d-block text-gray-dark">@weslleycsil</strong>Simbora galera!</p>
-                            </div>
-                            <small class="d-block text-right mt-3">
-                                <a href="javascript:leaveRoom()">Sair da Sala</a>
-                            </small>
+                            </div>-->
                         </div>
                     </div>
 
@@ -143,20 +140,19 @@
 
     <!-- FIM Modal Criar Sala -->
 
-    <!-- Modal Sair da Sala -->
+    <!-- Modal Listar usuarios -->
     <div class="modal fade" id="ListUsersRoom" tabindex="-1" role="dialog" aria-labelledby="modalListUsersRoom"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Sair de uma Sala</h5>
+                    <h5 class="modal-title" id="exampleModalLabel">Lista de Usuarios</h5>
                 </div>
-                <div class="modal-body">
-                    <label for="inputListUsersRoom" class="sr-only">Room#</label>
-                    <input type="text" id="inputListUsersRoom" class="form-control" placeholder="room#" required>
+                <div class="modal-body" id="listUsers">
+                    
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="ListUsersRoom();">Sair</button>
+                    <button type="button" class="btn btn-primary" onclick="">Fechar</button>
                 </div>
             </div>
         </div>
@@ -164,7 +160,7 @@
 
     <!-- FIM Modal Sair da Sala -->
 
-    <!-- Modal Entrar na Sala -->
+    <!-- Modal Listar Salas -->
     <div class="modal fade" id="joinRoom" tabindex="-1" role="dialog" aria-labelledby="modalJoinRoom"
         aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -172,12 +168,11 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="exampleModalLabel">Entrar em uma Sala</h5>
                 </div>
-                <div class="modal-body">
-                    <label for="inputRoom" class="sr-only">Room#</label>
-                    <input type="text" id="inputRoom" class="form-control" placeholder="room#" required>
+                <div class="modal-body" id="listRooms">
+                    
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" onclick="joinRoom();">Entrar</button>
+                    <button type="button" class="btn btn-primary" onclick="">Fechar</button>
                 </div>
             </div>
         </div>

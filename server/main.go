@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -39,12 +40,13 @@ type Message struct {
 
 // Declaração de variáveis.
 var (
-	ConnManager  = make(map[string]*Conn)        // Armazena todas as CONNs pelo ID.
-	RoomManager  = make(map[string]*Room)        // Armazena todas as ROOMs pelo Nome.
-	AddrManager  = make(map[string]*net.UDPAddr) // Armazena todos os endereços multicast pelo nome do grupo.
-	PortManager  = make(map[string]string)       // Arnazeba o nome dos grupos multicas pela porta.
-	broadcast    = make(chan Message)            // Canal responsavel pela transmissão das mensagens.
-	broadcastTCP = make(chan Message)            // Canal responsavel pela transmissão das mensagens.
+	ConnManager = make(map[string]*Conn)        // Armazena todas as CONNs pelo ID.
+	RoomManager = make(map[string]*Room)        // Armazena todas as ROOMs pelo Nome.
+	AddrManager = make(map[string]*net.UDPAddr) // Armazena todos os endereços multicast pelo nome do grupo.
+	PortManager = make(map[string]string)       // Arnazeba o nome dos grupos multicas pela porta.
+	canalSocket = make(chan Message)            // Canal responsavel pelas mensagens locais pro websocket
+	canalAdm    = make(chan Message)            // Canal administrativo responsavel por mensagens entre servidores
+	canalMult   = make(chan Message)            // Canal responsavel por enviar mensagens para grupo Multicast
 
 	// Geracao do id de indetificacao de cada servidor.
 	id, _    = uuid.NewRandom()
@@ -75,8 +77,7 @@ func main() {
 		fmt.Println("Server not found Listen.")
 	}
 	// Prepara a sala Root
-_:
-	NewRoom("root")
+	_ = NewRoom("root")
 
 	// Mensagens Entre servidores
 	go udpWriteAdm(conn)
@@ -90,12 +91,10 @@ _:
 	// Configuração da rota do websocket.
 	http.HandleFunc("/ws", handleConnections)
 
-	// Ouvir mensagens que entram no channel broadcast.
+	// Ouvir mensagens que entram no channel canalSocket.
 	go handleMessages()
-
+	log.Println("Server UUID: ", idServer, "Porta :8000") //mostra o UUID do servidor
 	// Iniciar o servidor na porta 8000 no localhost.
-	log.Println("UUID Server: ", idServer) //mostra o UUID do servidor
-	log.Println("ChatGO Iniciado na porta :8000")
 	err := http.ListenAndServe(":8000", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
@@ -132,13 +131,12 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 	//adiciono o as informações de conexão na lista de conexões do servidor
 	ConnManager[c.Id] = c
-	log.Printf("Nova Conexão - ID: %s", c.Id)
+	//log.Printf("Nova Conexão - ID: %s", c.Id)
 
 	//se a conexão estiver OK inicio a leitura do socket para obter informações
 	if c != nil {
 		go c.readSocket()
 		c.Join("root")
-		//listRooms()
 	}
 
 }
@@ -162,7 +160,7 @@ func (c *Conn) readSocket() {
 			//delete(ConnManager, c.Id)
 			break
 		}
-		log.Printf("MSG: %v", msg)
+		//log.Printf("MSG: %v", msg)
 		HandleData(c, msg)
 	}
 }
@@ -179,28 +177,34 @@ var HandleData = func(c *Conn, msg Message) {
 	switch msg.Event {
 	case "add":
 		//log.Printf("ADD Room")
-		sala := NewRoom(msg.Room)
-		log.Printf("Sala %s Criada", sala.Name)
+		_ = NewRoom(msg.Room)
+		//log.Printf("Sala %s Criada", sala.Name)
 		//enviar para o tcp
-		broadcastTCP <- msg
+		canalAdm <- msg
 		//
 		refreshRooms(msg.Room)
 		c.Join(msg.Room)
+	case "listUsers":
+		log.Printf("Lista de Usuarios")
+		c.sendList(listMembers(msg.Room), "listUsers")
+	case "listRooms":
+		log.Printf("Lista de Salas")
+		c.sendList(listRooms(), "listRooms")
 	case "join":
-		log.Printf("Join Room")
+		//log.Printf("Join Room")
 		c.Join(msg.Room)
 	case "change":
 		c.ChangeUser(msg.Username)
-		log.Printf("Change User")
+		//log.Printf("Change User")
 	case "leave":
-		log.Printf("Leave Room")
+		//log.Printf("Leave Room")
 		c.Leave(msg.Room)
 	default:
 		// Esse cliente tem permissão para esse canal?
 		if _, ok := c.Rooms[msg.Room]; ok {
 			// Envia a msg para o canal.
-			broadcast <- msg
-			broadcastTCP <- msg
+			canalSocket <- msg
+			canalMult <- msg
 		} else {
 			log.Printf("Permissão Negada")
 		}
@@ -208,13 +212,13 @@ var HandleData = func(c *Conn, msg Message) {
 }
 
 /*
-	### Funções para tratar o broadcast das mensagens recebidas. ###
+	### Funções para tratar o canalSocket das mensagens recebidas. ###
 */
 func handleMessages() {
 	for {
 		// Pego a informação que está no channel
-		msg := <-broadcast
-		log.Printf("Recebido uma nova Informacao!")
+		msg := <-canalSocket
+		//log.Printf("Recebido uma nova Informacao!")
 		//log.Printf("MSG!: %v", msg)
 
 		// obtenho o room que tem como destino a msg
@@ -250,20 +254,21 @@ func (c *Conn) Join(name string) {
 
 	c.Status(name, false)
 }
+
 func portGenerator() string {
 	number := 9999
 	strNumber := "1111"
 	port := "0000"
-	for ; number > 1; number-- {
+	for ; number > 3000; number-- {
 		strNumber = strconv.Itoa(number)
 
 		if _, ok := PortManager[strNumber]; ok {
 			// Porta está em uso.
-			log.Printf("porta em uso, busca a proxima")
+			//log.Printf("porta em uso, busca a proxima")
 		} else {
 			// Porta ociosa.
 			number = 1
-			log.Printf("porta sem uso, usar")
+			//log.Printf("porta sem uso, usar")
 		}
 	}
 	lenn := len(strNumber)
@@ -286,7 +291,7 @@ func manageMulticastGroup(groupName string) *net.UDPAddr {
 		PortManager[port] = groupName
 
 		groupAddrs := base + ":" + port
-		fmt.Println(groupAddrs)
+		//fmt.Println(groupAddrs)
 		Addr, _ := net.ResolveUDPAddr("udp", groupAddrs)
 		AddrManager[groupName] = Addr
 		return Addr
@@ -346,7 +351,8 @@ func (c *Conn) ChangeUser(user string) {
 			Server:   idServer,
 		}
 
-		broadcast <- m
+		canalSocket <- m
+		canalMult <- m
 	}
 
 	c.User = user
@@ -371,8 +377,8 @@ func (c *Conn) Status(name string, s bool) {
 		Server:   idServer,
 	}
 
-	broadcast <- m
-	broadcastTCP <- m
+	canalSocket <- m
+	canalMult <- m
 }
 
 // Atualiza a listagem das salas
@@ -414,13 +420,13 @@ func refreshRooms(name string) {
 		Server:   idServer,
 	}
 	log.Printf("Aviso de nova sala criada")
-	broadcast <- m
+	canalSocket <- m
 }
 
 func udpWriteAdm(conn *net.UDPConn) {
 	for {
-		writeStr := <-broadcastTCP
-		fmt.Println("WriteStr: %s", writeStr)
+		writeStr := <-canalAdm
+		//fmt.Println("WriteStr: %s", writeStr)
 		bolB, _ := json.Marshal(writeStr)
 		fmt.Println("bolB: %s", string(bolB))
 		in, err := conn.Write(bolB)
@@ -432,13 +438,13 @@ func udpWriteAdm(conn *net.UDPConn) {
 
 }
 
-//escrita nos multicast groups do canal broadcast
+//escrita nos multicast groups do canal canal Multicast
 func udpWrite() {
 	for {
-		writeStr := <-broadcast
+		writeStr := <-canalMult
 		sala := writeStr.Room
 		conn, _ := net.DialUDP("udp", nil, RoomManager[sala].AddrRoom)
-		fmt.Println("WriteStr: %s", writeStr)
+		//fmt.Println("WriteStr: %s", writeStr)
 		bolB, _ := json.Marshal(writeStr)
 		fmt.Println("bolB: %s", string(bolB))
 		in, err := conn.Write(bolB)
@@ -460,7 +466,7 @@ func udpRead(connListen *net.UDPConn) {
 		//log.Printf("ROLO: %S", str)
 		msg := Message{}
 		json.Unmarshal([]byte(str), &msg)
-		log.Printf("MSG!: %v", msg)
+		log.Printf("MSG Recebida UDP!: %v", msg)
 		if msg.Server != idServer {
 			handleUDP(msg)
 		}
@@ -469,14 +475,32 @@ func udpRead(connListen *net.UDPConn) {
 }
 
 func handleUDP(msg Message) {
-	log.Printf("MSG!: %v", msg)
+	//log.Printf("MSG!: %v", msg)
 	switch msg.Event {
 	case "add":
 		sala := NewRoom(msg.Room)
 		log.Printf("Sala %s Criada", sala.Name)
 		refreshRooms(msg.Room)
 	default:
-		broadcast <- msg
+		canalSocket <- msg
+	}
+}
+
+func (c *Conn) sendList(lista []string, event string) {
+	justString := strings.Join(lista, ",")
+	m := Message{
+		Email:    "email",
+		Username: "Servidor",
+		Message:  justString,
+		Event:    event,
+		Room:     "",
+		Server:   idServer,
+	}
+
+	err := c.Socket.WriteJSON(m)
+	if err != nil {
+		log.Printf("error: %v", err)
+		c.Socket.Close()
 	}
 }
 
@@ -507,7 +531,7 @@ func monitRoom(name string) {
 					//log.Printf("ROLO: %S", str)
 					msg := Message{}
 					json.Unmarshal([]byte(str), &msg)
-					log.Printf("MSG!: %v", msg)
+					//log.Printf("MSG!: %v", msg)
 					if msg.Server != idServer {
 						handleUDP(msg)
 					}

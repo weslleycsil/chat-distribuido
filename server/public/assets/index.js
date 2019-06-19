@@ -10,6 +10,9 @@ var obj = {
 var conn; // conexao websocket
 var chat = document.getElementById("chat");
 var roomList = document.getElementById("Salas");
+var nomeSala = document.getElementById("namesala");
+var popUsers = document.getElementById("listUsers");
+var popRooms = document.getElementById("listRooms");
 
 /**
  * Local Storage Gabarito
@@ -109,8 +112,8 @@ function leaveRoom(){
     }
     var Rooms = JSON.parse(localStorage.getItem('Rooms'));
     const i = Rooms.indexOf(ObjChat.RoomActive)
-    NewRooms = Rooms.splice(i,1);
-    localStorage.setItem('Rooms', JSON.stringify(NewRooms));
+    N = Rooms.splice(i,1);
+    localStorage.setItem('Rooms', JSON.stringify(Rooms));
     obj.Event = 'leave';
     obj.Room = ObjChat.RoomActive;
     obj.Message = "sair da sala";
@@ -134,13 +137,14 @@ function newRoom() {
     obj.Message = "adicionar sala";
     obj.Room = roomNew;
     sendMsg(obj);
+    document.getElementById("inputNewRoom").value = "";
     $('#NewRoom').modal('hide');
 };
 
 /**
  * Função para entrar em um sala que eu ainda não entrei
  * @param {string} nome 
- * Funcionamento
+ * Funcionamento OK
  */
 function joinRoom(nome) {
     //verifico se já estou na sala
@@ -180,20 +184,6 @@ function changeUsername() {
 };
 
 /**
- * Função para adicionar a função sair da sala ao rodape do chat
- * Funcionamento OK
- */
-function appendSair(){
-    var small = document.createElement("small");
-    small.className = "d-block text-right mt-3";
-    var a = document.createElement("a");
-    a.href = "javascript:leaveRoom()";
-    a.innerText = 'Sair da Sala';
-    small.appendChild(a);
-    chat.appendChild(small);
-}
-
-/**
  * Função para adicionar conversas no chat
  * @param {*} m 
  * Funcionamento OK
@@ -229,7 +219,7 @@ function appendRoom(room){
     item.id = room;
     var a = document.createElement("a");
     a.href = "javascript:abrirSala('"+room+"')";
-    a.innerText = 'Sala #'+room;
+    a.innerText = '#'+room;
     item.appendChild(a);
     roomList.appendChild(item);
 };
@@ -237,7 +227,7 @@ function appendRoom(room){
 /**
  *  Funcão para adiconar a sala no local storage e tbm acionar a colocação na barra lateral
  * @param {string} sala
- * Funcionamento 
+ * Funcionamento OK
  */
 function addSala(nome){
     var Rooms = JSON.parse(localStorage.getItem('Rooms'));
@@ -256,7 +246,7 @@ function addSala(nome){
 /**
  * Funcão para abrir a sala no frontend
  * @param {string} sala 
- * Funcionamento 
+ * Funcionamento OK
  */
 function abrirSala(sala){
     var ObjChat = JSON.parse(localStorage.getItem('ObjChat'));
@@ -272,6 +262,8 @@ function abrirSala(sala){
     while(c.length > 1){
         chat.removeChild(c[1]);
     }
+    //mudar nome da sala titulo
+    nomeSala.innerText = 'Sala #'+sala;
     //adicionar msg das salas na tela
     var msgs = JSON.parse(localStorage.getItem(sala));
     if(msgs == null){
@@ -280,13 +272,12 @@ function abrirSala(sala){
     msgs.forEach(element => {
         appendChat(element);
     });
-    appendSair();
 }
 
 /**
  * Função para adicionar mensagens no local storage de cada sala
  * @param {*} msg 
- * Funcionamento 
+ * Funcionamento OK
  */
 function addMsg(msg){
     var msgs = JSON.parse(localStorage.getItem(msg.room));
@@ -299,7 +290,7 @@ function addMsg(msg){
 
 /**
  * Função para enviar uma nova mensagem
- * Funcionamento
+ * Funcionamento OK
  */
 function Enviar(){
     if (!conn) {
@@ -314,8 +305,65 @@ function Enviar(){
     return true;
 }
 
+function getListRooms(){
+    obj.Event = 'listRooms';
+    obj.Message = "listar salas";
+    obj.Room = "";
+    sendMsg(obj);
+}
+
+function getListUsers(){
+    var ObjChat = JSON.parse(localStorage.getItem('ObjChat'));
+    obj.Event = 'listUsers';
+    obj.Message = "listar usuarios";
+    obj.Room = ObjChat.RoomActive;
+    sendMsg(obj);
+}
+
+function listUsers(lista){
+    c = popUsers.children;
+    while(c.length > 0){
+        popUsers.removeChild(c[0]);
+    }
+    var l = lista.split(",");
+    var newList = [];
+    l.forEach(element=>{
+        if(element != ""){
+            var item = document.createElement("li");
+            item.innerText = element;
+            popUsers.appendChild(item);
+        }
+    });
+}
+
+function listRooms(lista){
+    c = popRooms.children;
+    while(c.length > 0){
+        popRooms.removeChild(c[0]);
+    }
+    var l = lista.split(",");
+    var newList = [];
+    l.forEach(element=>{
+        if(element != ""){
+            var item = document.createElement("li");
+            var a = document.createElement("a");
+            a.href = "javascript:joinRoom('"+element+"')";
+            a.innerText = 'Sala #'+element;
+            item.appendChild(a);
+            popRooms.appendChild(item);
+        }
+    });
+}
+
+
 window.onload = function () {
     $('#enter').modal('show')
+    var ObjChat = {
+        Username: null,
+        Email: null,
+        RoomActive: null,
+    };
+    localStorage.setItem('ObjChat', JSON.stringify(ObjChat));
     if (window["WebSocket"]) {
         conn = new WebSocket("ws://" + document.location.host + "/ws");
         conn.onclose = function (evt) {
@@ -327,16 +375,22 @@ window.onload = function () {
             console.log("Nova MSG recebida: ", msgEvt)
             if(msgEvt.event == "msg"){
                 addMsg(msgEvt);
-                if(msgEvt.room == obj.Room){
-                    appendChat(msgEvt);
+                var ObjChat = JSON.parse(localStorage.getItem('ObjChat'));
+                if(ObjChat.RoomActive == null){
+                    ObjChat.RoomActive= "root";
+                }
+                if(msgEvt.room == ObjChat.RoomActive){
+                    appendChat(msgEvt); // ver melhor recepção
                 }
             } else if(msgEvt.event == "command" && msgEvt.message == "add sala"){
                 //adicionar sala ao array de salas
                 addSala(msgEvt.room)
             } else if(msgEvt.event == "listRooms"){
                 console.log("Listar Rooms: ", msgEvt.message);
+                listRooms(msgEvt.message)
             } else if(msgEvt.event == "listUsers"){
                 console.log("Listar Users: ", msgEvt.message);
+                listUsers(msgEvt.message)
             } else {
                 // tratar outros tipos de mensagens
                 console.log(msgEvt)
