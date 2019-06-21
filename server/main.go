@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -63,6 +64,8 @@ var (
 
 // Função principal.
 func main() {
+	//Obter a porta de inicialização do serviço
+	portListen := os.Args[1]
 	// Comunicaçao entre servidores atravez de MulticastUDP
 	//groupAdm := "224.30.30.30:9999"
 	// Addr, _ := net.ResolveUDPAddr("udp", groupAdm)
@@ -93,9 +96,9 @@ func main() {
 
 	// Ouvir mensagens que entram no channel canalSocket.
 	go handleMessages()
-	log.Println("Server UUID: ", idServer, "Porta :8000") //mostra o UUID do servidor
+	log.Println("Server UUID: ", idServer, "Porta :", portListen) //mostra o UUID do servidor
 	// Iniciar o servidor na porta 8000 no localhost.
-	err := http.ListenAndServe(":8000", nil)
+	err := http.ListenAndServe(":"+portListen, nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -291,7 +294,7 @@ func manageMulticastGroup(groupName string) *net.UDPAddr {
 		PortManager[port] = groupName
 
 		groupAddrs := base + ":" + port
-		//fmt.Println(groupAddrs)
+		fmt.Println("Sala: ", groupName, "->", groupAddrs)
 		Addr, _ := net.ResolveUDPAddr("udp", groupAddrs)
 		AddrManager[groupName] = Addr
 		return Addr
@@ -443,6 +446,7 @@ func udpWrite() {
 	for {
 		writeStr := <-canalMult
 		sala := writeStr.Room
+		fmt.Println("Sala UDPWrite %s", sala)
 		conn, _ := net.DialUDP("udp", nil, RoomManager[sala].AddrRoom)
 		//fmt.Println("WriteStr: %s", writeStr)
 		bolB, _ := json.Marshal(writeStr)
@@ -528,7 +532,7 @@ func monitRoom(name string) {
 						fmt.Printf("Error when read from server. Error:%s\n", err)
 					}
 					str := string(readStr[:length])
-					//log.Printf("ROLO: %S", str)
+					log.Printf("MSG Recebida UDP Sala: %S", str)
 					msg := Message{}
 					json.Unmarshal([]byte(str), &msg)
 					//log.Printf("MSG!: %v", msg)
