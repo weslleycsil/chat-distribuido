@@ -2,11 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 
@@ -22,11 +25,164 @@ type Conn struct {
 	Rooms  map[string]*Room // Endereço das salas à que pertence.
 }
 
+// Entrando nas Rooms
+func (c *Conn) Join(name string) {
+	var room *Room
+
+	if _, ok := RoomManager[name]; ok {
+		room = RoomManager[name]
+	} else {
+		log.Printf(" Sala não existe")
+	}
+	room.Members[c.Id] = c
+	ConnManager[c.Id].Rooms[name] = room
+
+	c.Status(name, false)
+}
+
+// Remove usuario da sala
+func (c *Conn) Leave(name string) {
+	room := RoomManager[name]
+	c.Status(name, true)
+	delete(room.Members, c.Id)
+	delete(ConnManager, c.Id)
+	if len(room.Members) <= 0 {
+		room.emptyRoom <- true
+	}
+	//log.Printf("CONEXOES: %v", ConnManager)
+}
+
+// Troca username ou nickname.
+func (c *Conn) ChangeUser(user string) {
+	for _, room := range c.Rooms {
+
+		m := Message{
+			Email:    "email",
+			Username: "Servidor",
+			Message:  c.User + " mudou para " + user,
+			Event:    "msg",
+			Room:     room.Name,
+			Server:   idServer,
+		}
+
+		canalSocket <- m
+		canalMult <- m
+	}
+
+	c.User = user
+}
+
+// Avisos do sistema [joined/leave]
+func (c *Conn) Status(name string, s bool) {
+	//room := RoomManager[name]
+	user := c.User
+	action := "Entrou."
+
+	if s {
+		action = "Saiu."
+	}
+
+	m := Message{
+		Email:    "email",
+		Username: "Servidor",
+		Message:  user + " " + action,
+		Event:    "msg",
+		Room:     name,
+		Server:   idServer,
+	}
+
+	canalSocket <- m
+	canalMult <- m
+}
+
+// Leitura de informações pelo socket.
+func (c *Conn) readSocket() {
+
+	defer func() {
+		c.Socket.Close()
+	}()
+
+	// Tratar o que o socket recebe.
+	for {
+		var msg Message
+
+		// Ler as mensagens que são enviadas para o socket.
+		err := c.Socket.ReadJSON(&msg)
+
+		if err != nil {
+			log.Printf("error: %v", err)
+			//delete(ConnManager, c.Id)
+			break
+		}
+		//log.Printf("MSG: %v", msg)
+		HandleData(c, msg)
+	}
+}
+
 // Define o objeto sala.
 type Room struct {
-	Name     string           // Identificador da sala.
-	Members  map[string]*Conn // Endereço das conexões conectadas à está sala.
-	AddrRoom *net.UDPAddr     // Endereço do canal multicast da sala.
+	Name      string           // Identificador da sala.
+	Members   map[string]*Conn // Endereço das conexões conectadas à está sala.
+	AddrRoom  *net.UDPAddr     // Endereço do canal multicast da sala.
+	emptyRoom chan bool
+}
+
+// Cria uma nova ROOM.
+func NewRoom(name string) *Room {
+	r := &Room{
+		Name:      "root",
+		Members:   make(map[string]*Conn),
+		AddrRoom:  nil,
+		emptyRoom: make(chan bool),
+	}
+	// A sala ja existe?
+	if _, ok := RoomManager[name]; ok {
+		//log.Printf("A sala ja existe")
+		r = RoomManager[name]
+		return r
+
+		// O nome foi setado?
+	} else if name == "" {
+		r.AddrRoom = manageMulticastGroup(name)
+		RoomManager[name] = r
+		go r.monitRoom()
+		return r
+
+	} else {
+		r.Name = name
+		r.AddrRoom = manageMulticastGroup(name)
+		RoomManager[name] = r
+		go r.monitRoom()
+		return r
+	}
+}
+
+func (r *Room) monitRoom() {
+
+	Addr := r.AddrRoom
+	connListen, _ := net.ListenMulticastUDP("udp", nil, Addr)
+
+	for {
+		select {
+		case <-r.emptyRoom:
+			return
+
+		default:
+			length, _, err := connListen.ReadFromUDP(readStr)
+			if err != nil {
+				fmt.Printf("Error when read from server. Error:%s\n", err)
+				continue
+			}
+			str := string(readStr[:length])
+			log.Printf("MSG Recebida UDP Sala: %s", str)
+			msg := Message{}
+			json.Unmarshal([]byte(str), &msg)
+			//log.Printf("MSG!: %v", msg)
+			if msg.Server != idServer {
+				handleUDP(msg)
+			}
+		}
+	}
 }
 
 // Define o objeto mensagem.
@@ -60,12 +216,32 @@ var (
 	upgrader = websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
+
+	portListen string
+	cpuprofile *string
 )
+
+func init() {
+	flag.StringVar(&portListen, "port", ":8000", "set the server bind address, e.g.: './server -port :9000'")
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to a file, e.g.: './server -cpuprofile=magano.prof'")
+}
 
 // Função principal.
 func main() {
-	//Obter a porta de inicialização do serviço
-	portListen := os.Args[1]
+
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
+
 	// Comunicaçao entre servidores atravez de MulticastUDP
 	//groupAdm := "224.30.30.30:9999"
 	// Addr, _ := net.ResolveUDPAddr("udp", groupAdm)
@@ -96,12 +272,21 @@ func main() {
 
 	// Ouvir mensagens que entram no channel canalSocket.
 	go handleMessages()
-	log.Println("Server UUID: ", idServer, "Porta :", portListen) //mostra o UUID do servidor
+	log.Println("Server UUID: ", idServer, "Porta:", portListen) //mostra o UUID do servidor
 	// Iniciar o servidor na porta 8000 no localhost.
-	err := http.ListenAndServe(":"+portListen, nil)
-	if err != nil {
-		log.Fatal("ListenAndServe: ", err)
-	}
+	fmt.Println("\ttecnicamente..")
+	go func() {
+		err := http.ListenAndServe(portListen, nil)
+		if err != nil {
+			log.Fatal("ListenAndServe: ", err)
+		}
+	}()
+
+	terminate := make(chan os.Signal, 1)
+	signal.Notify(terminate, os.Interrupt)
+	<-terminate
+
+	fmt.Println("\t\tSAIU!")
 }
 
 /*
@@ -144,36 +329,12 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Leitura de informações pelo socket.
-func (c *Conn) readSocket() {
-
-	defer func() {
-		c.Socket.Close()
-	}()
-
-	// Tratar o que o socket recebe.
-	for {
-		var msg Message
-
-		// Ler as mensagens que são enviadas para o socket.
-		err := c.Socket.ReadJSON(&msg)
-
-		if err != nil {
-			log.Printf("error: %v", err)
-			//delete(ConnManager, c.Id)
-			break
-		}
-		//log.Printf("MSG: %v", msg)
-		HandleData(c, msg)
-	}
-}
-
 /*
 	### Funções para tratar as dados no socket. ###
 */
 
 // Gerencia dos eventos.
-var HandleData = func(c *Conn, msg Message) {
+func HandleData(c *Conn, msg Message) {
 
 	msg.Server = idServer
 
@@ -243,21 +404,6 @@ func handleMessages() {
 	}
 }
 
-// Entrando nas Rooms
-func (c *Conn) Join(name string) {
-	var room *Room
-
-	if _, ok := RoomManager[name]; ok {
-		room = RoomManager[name]
-	} else {
-		log.Printf(" Sala não existe")
-	}
-	room.Members[c.Id] = c
-	ConnManager[c.Id].Rooms[name] = room
-
-	c.Status(name, false)
-}
-
 func portGenerator() string {
 	number := 9999
 	strNumber := "1111"
@@ -299,89 +445,6 @@ func manageMulticastGroup(groupName string) *net.UDPAddr {
 		AddrManager[groupName] = Addr
 		return Addr
 	}
-}
-
-// Cria uma nova ROOM.
-func NewRoom(name string) *Room {
-	r := &Room{
-		Name:     "root",
-		Members:  make(map[string]*Conn),
-		AddrRoom: nil,
-	}
-	// A sala ja existe?
-	if _, ok := RoomManager[name]; ok {
-		//log.Printf("A sala ja existe")
-		r = RoomManager[name]
-		return r
-
-		// O nome foi setado?
-	} else if name == "" {
-		r.AddrRoom = manageMulticastGroup(name)
-		RoomManager[name] = r
-		go monitRoom(name)
-		return r
-
-	} else {
-		r.Name = name
-		r.AddrRoom = manageMulticastGroup(name)
-		RoomManager[name] = r
-		go monitRoom(name)
-		//log.Printf("Salas: %v", RoomManager)
-		return r
-
-	}
-}
-
-// Remove usuario da sala
-func (c *Conn) Leave(name string) {
-	room := RoomManager[name]
-	delete(room.Members, c.Id)
-	delete(ConnManager, c.Id)
-	c.Status(name, true)
-	//log.Printf("CONEXOES: %v", ConnManager)
-}
-
-// Troca username ou nickname.
-func (c *Conn) ChangeUser(user string) {
-	for _, room := range c.Rooms {
-
-		m := Message{
-			Email:    "email",
-			Username: "Servidor",
-			Message:  c.User + " mudou para " + user,
-			Event:    "msg",
-			Room:     room.Name,
-			Server:   idServer,
-		}
-
-		canalSocket <- m
-		canalMult <- m
-	}
-
-	c.User = user
-}
-
-// Avisos do sistema [joined/leave]
-func (c *Conn) Status(name string, s bool) {
-	//room := RoomManager[name]
-	user := c.User
-	action := "Entrou."
-
-	if s {
-		action = "Saiu."
-	}
-
-	m := Message{
-		Email:    "email",
-		Username: "Servidor",
-		Message:  user + " " + action,
-		Event:    "msg",
-		Room:     name,
-		Server:   idServer,
-	}
-
-	canalSocket <- m
-	canalMult <- m
 }
 
 // Atualiza a listagem das salas
@@ -431,7 +494,7 @@ func udpWriteAdm(conn *net.UDPConn) {
 		writeStr := <-canalAdm
 		//fmt.Println("WriteStr: %s", writeStr)
 		bolB, _ := json.Marshal(writeStr)
-		fmt.Println("bolB: %s", string(bolB))
+		fmt.Println("bolB:", string(bolB))
 		in, err := conn.Write(bolB)
 		if err != nil {
 			fmt.Printf("Error when send to server: %d\n", in)
@@ -446,11 +509,11 @@ func udpWrite() {
 	for {
 		writeStr := <-canalMult
 		sala := writeStr.Room
-		fmt.Println("Sala UDPWrite %s", sala)
+		fmt.Println("Sala UDPWrite", sala)
 		conn, _ := net.DialUDP("udp", nil, RoomManager[sala].AddrRoom)
 		//fmt.Println("WriteStr: %s", writeStr)
 		bolB, _ := json.Marshal(writeStr)
-		fmt.Println("bolB: %s", string(bolB))
+		fmt.Println("bolB:", string(bolB))
 		in, err := conn.Write(bolB)
 		if err != nil {
 			fmt.Printf("Error when send to server: %d\n", in)
@@ -513,43 +576,46 @@ func (c *Conn) sendList(lista []string, event string) {
 //se tiver eu escuto o grupo multicast
 //se nao tiver eu deixo de escutar
 func monitRoom(name string) {
-	r := RoomManager[name]
-	ch := false
+	// r := RoomManager[name]
+	// ch := false
 
-	done := make(chan int)
+	// done := make(chan int)
 
-	Addr := r.AddrRoom
-	connListen, _ := net.ListenMulticastUDP("udp", nil, Addr)
+	// Addr := r.AddrRoom
+	// connListen, _ := net.ListenMulticastUDP("udp", nil, Addr)
 
-	for {
-		if len(r.Members) > 0 && ch == false {
-			ch = true
-			fmt.Println("Monitorar Sala ", r.Name)
-			go func() {
-				for {
-					length, _, err := connListen.ReadFromUDP(readStr)
-					if err != nil {
-						fmt.Printf("Error when read from server. Error:%s\n", err)
-					}
-					str := string(readStr[:length])
-					log.Printf("MSG Recebida UDP Sala: %S", str)
-					msg := Message{}
-					json.Unmarshal([]byte(str), &msg)
-					//log.Printf("MSG!: %v", msg)
-					if msg.Server != idServer {
-						handleUDP(msg)
-					}
-					_, ok := <-done
-					if !ok {
-						return
-					}
-				}
-			}()
-		}
-		if len(r.Members) < 1 && ch == true {
-			ch = false
-			fmt.Println("Parar Monitoramento da Sala ", r.Name)
-			close(done)
-		}
-	}
+	// for {
+	// 	if len(r.Members) > 0 && ch == false {
+	// 		ch = true
+	// 		fmt.Println("Monitorar Sala ", r.Name)
+	// 		go func() {
+	// 			for {
+	// 				select {
+	// 				case <-done:
+	// 					return
+	// 				default:
+	// 					length, _, err := connListen.ReadFromUDP(readStr)
+	// 					if err != nil {
+	// 						fmt.Printf("Error when read from server. Error:%s\n", err)
+	// 					}
+	// 					str := string(readStr[:length])
+	// 					log.Printf("MSG Recebida UDP Sala: %s", str)
+	// 					msg := Message{}
+	// 					json.Unmarshal([]byte(str), &msg)
+	// 					//log.Printf("MSG!: %v", msg)
+	// 					if msg.Server != idServer {
+	// 						handleUDP(msg)
+	// 					}
+	// 				}
+	// 			}
+	// 		}()
+
+	// 	}
+	// 	if len(r.Members) < 1 && ch == true {
+	// 		ch = false
+	// 		fmt.Println("Parar Monitoramento da Sala ", r.Name)
+	// 		done <- 1
+	// 	}
+	// 	fmt.Println("AQUIPORR")
+	// }
 }
