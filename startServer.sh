@@ -5,7 +5,7 @@ read inst;
 var=$((inst+8000))
 cd server 
 
-echo "upstream sr73.twcreativs.stream {" > /etc/nginx/configServer/serversgo.conf
+echo "upstream chatgo {" > /etc/nginx/configServer/serversgo.conf
 for ((i=8000; i < var; i++))
 do
         echo "server localhost:"$i";" >> /etc/nginx/configServer/serversgo.conf  
