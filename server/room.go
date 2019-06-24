@@ -12,7 +12,7 @@ type Room struct {
 	Name      string           // Identificador da sala.
 	Members   map[string]*Conn // Endereço das conexões conectadas à está sala.
 	AddrRoom  *net.UDPAddr     // Endereço do canal multicast da sala.
-	emptyRoom chan bool
+	emptyRoom chan bool        // Canal de Verificação de Sala vazia
 }
 
 // Cria uma nova ROOM.
@@ -66,9 +66,14 @@ func (r *Room) monitRoom() {
 			str := string(readStr[:length])
 			log.Printf("MSG Recebida UDP Sala: %s", str)
 			msg := Message{}
-			json.Unmarshal([]byte(str), &msg)
-			//log.Printf("MSG!: %v", msg)
+			err = json.Unmarshal([]byte(str), &msg)
+			if err != nil {
+				log.Printf("ROLO: %s", str)
+				fmt.Printf("Erro ao tratar a msg %s\n", err)
+				continue
+			}
 			if msg.Server != idServer {
+				log.Printf("MSG Recebida UDP SALA!: %v", msg)
 				handleUDP(msg)
 			}
 		}

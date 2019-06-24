@@ -73,9 +73,6 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	// Comunicaçao entre servidores atravez de MulticastUDP
-	//groupAdm := "224.30.30.30:9999"
-	// Addr, _ := net.ResolveUDPAddr("udp", groupAdm)
 	Addr := manageMulticastGroup("Servers")
 	conn, err2 := net.DialUDP("udp", nil, Addr)
 	connListen, err3 := net.ListenMulticastUDP("udp", nil, Addr)
@@ -196,11 +193,15 @@ func udpRead(connListen *net.UDPConn) {
 			fmt.Printf("Error when read from server. Error:%s\n", err)
 		}
 		str := string(readStr[:length])
-		//log.Printf("ROLO: %S", str)
 		msg := Message{}
-		json.Unmarshal([]byte(str), &msg)
-		log.Printf("MSG Recebida UDP!: %v", msg)
+		err = json.Unmarshal([]byte(str), &msg)
+		if err != nil {
+			log.Printf("ROLO: %s", str)
+			fmt.Printf("Erro ao tratar a msg %s\n", err)
+			continue
+		}
 		if msg.Server != idServer {
+			log.Printf("MSG Recebida UDP!: %v", msg)
 			handleUDP(msg)
 		}
 	}

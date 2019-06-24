@@ -38,7 +38,7 @@ func (c *Conn) Leave(name string) {
 	if len(room.Members) <= 0 {
 		room.emptyRoom <- true
 	}
-	c.Socket.Close()
+	//c.Socket.Close() //verificar e retirar
 }
 
 // Troca username ou nickname.
@@ -87,6 +87,10 @@ func (c *Conn) Status(name string, s bool) {
 func (c *Conn) readSocket() {
 
 	defer func() {
+		//desconetar o usuario de todas as salas que ele tinha entrado
+		for _, room := range c.Rooms {
+			c.Leave(room.Name)
+		}
 		c.Socket.Close()
 	}()
 

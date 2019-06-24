@@ -91,17 +91,15 @@ func handleMessages() {
 		// obtenho o room que tem como destino a msg
 		room := RoomManager[msg.Room]
 
-		if len(room.Members) > 0 { // se tiver pessoas na sala
-			//Loop criado com o intuito de enviar a mensagem para todas as conexões de uma determinada sala
-			for _, client := range room.Members {
-				log.Printf("MSG: %v", msg)
-				// Escrevo a mensagem para aquela conexao de socket
-				err := client.Socket.WriteJSON(msg)
-				if err != nil {
-					log.Printf("error: %v", err)
-					client.Socket.Close()
-					//delete(ConnManager, client.Id)
-				}
+		//Loop criado com o intuito de enviar a mensagem para todas as conexões de uma determinada sala
+		for _, client := range room.Members {
+			log.Printf("MSG: %v", msg)
+			// Escrevo a mensagem para aquela conexao de socket
+			err := client.Socket.WriteJSON(msg)
+			if err != nil {
+				log.Printf("error: %v", err)
+				client.Socket.Close()
+				//delete(ConnManager, client.Id)
 			}
 		}
 	}
