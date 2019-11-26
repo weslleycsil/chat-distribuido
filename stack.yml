@@ -1,0 +1,19 @@
+version: "3"
+services:
+
+    chat:
+        image: weslleycsil/chat-go:1.1.0
+        networks:
+            - traefik_proxy
+        deploy:
+          replicas: 2
+          labels:
+            - "traefik.web.port=8000"
+            - "traefik.docker.network=traefik_proxy"
+            - "traefik.web.frontend.rule=Host:chat-go.sr73.twcreativs.stream"
+        working_dir: /app
+
+networks:
+    traefik_proxy:
+        external:
+            name: traefik_proxy

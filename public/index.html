@@ -1,0 +1,215 @@
+<html lang="pt-br">
+
+<head>
+    <title>
+        MagnusWeb
+    </title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+
+<body>
+
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
+        <a class="navbar-brand" href="#">MagnusWeb</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+            aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:abrirPopup(1)">Criar Sala<span class="sr-only"></span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:abrirPopup(2)">Listar Salas<span class="sr-only"></span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:abrirPopup(4)">Listar Usuarios<span class="sr-only"></span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="javascript:abrirPopup(3)">Mudar Nick<span class="sr-only"></span></a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-4">
+                <div class="my-3 p-3 bg-white rounded shadow-sm" id="lateral">
+                    <h6 class="border-bottom border-gray pb-2 mb-0">Salas Ativas #</h6>
+                    <div class="form-inline mt-2 mt-md-0">
+                        <br>
+                        <div class="media text-muted pt-3">
+                            <ul id="Salas">
+                                <li id="root"><a href="javascript:abrirSala('root')">#Root</a></li>
+                            </ul>
+
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+            <div class="col-8">
+                <div class="row">
+                    <div class="col">
+                        <div class=" p-3 my-3 text-white-50 rounded shadow-sm" style="background-color: #343a40;">
+                            <div class="lh-100">
+                                <h6 class="mb-0 text-white lh-100" id="namesala">Sala #Root</h6>
+                            </div>
+                                <small class="d-block text-right mt-3">
+                                    <a href="javascript:leaveRoom()">Sair da Sala</a>
+                                </small>
+                        </div>
+                        <div class="my-3 p-3 bg-white rounded shadow-sm" id="chat">
+                            <h6 class="border-bottom border-gray pb-2 mb-0">Conversas</h6>
+                            <!--<div class="media text-muted pt-3">
+                                <img src="" class="bd-placeholder-img mr-2 rounded" width="32" height="32" />
+                                <p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray"><strong
+                                        class="d-block text-gray-dark">@weslleycsil</strong>Simbora galera!</p>
+                            </div>-->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Input do Chat -->
+                <div class="row">
+                    <div class="col-8">
+                        <label for="msg" class="sr-only">Mensagem</label>
+                        <input type="text" id="msg" class="form-control" placeholder="Escreva Aqui sua Mensagem"
+                            autofocus="true">
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-lg btn-primary btn-block" onclick="Enviar();">Enviar</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Iniciar Chat -->
+    <div class="modal fade" id="enter" tabindex="-1" role="dialog" aria-labelledby="modalHome" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Iniciar Chat</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="form-signin">
+                        <label for="inputEmail" class="sr-only">Endereço de email</label>
+                        <input type="email" id="inputEmail" class="form-control" placeholder="Seu email" required
+                            autofocus>
+                        <label for="inputUser" class="sr-only">@Username</label>
+                        <input type="text" id="inputUser" class="form-control" placeholder="@username" required>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="enterChat();">Iniciar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- FIM Modal Iniciar Chat -->
+
+    <!-- Modal Criar Sala -->
+    <div class="modal fade" id="NewRoom" tabindex="-1" role="dialog" aria-labelledby="modalNewRoom" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Criar uma Sala</h5>
+                </div>
+                <div class="modal-body">
+                    <label for="inputNewRoom" class="sr-only">Room#</label>
+                    <input type="text" id="inputNewRoom" class="form-control" placeholder="room#" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="newRoom();">Criar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIM Modal Criar Sala -->
+
+    <!-- Modal Listar usuarios -->
+    <div class="modal fade" id="ListUsersRoom" tabindex="-1" role="dialog" aria-labelledby="modalListUsersRoom"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Lista de Usuarios</h5>
+                </div>
+                <div class="modal-body" id="listUsers">
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIM Modal Sair da Sala -->
+
+    <!-- Modal Listar Salas -->
+    <div class="modal fade" id="joinRoom" tabindex="-1" role="dialog" aria-labelledby="modalJoinRoom"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Entrar em uma Sala</h5>
+                </div>
+                <div class="modal-body" id="listRooms">
+                    
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- FIM Modal Entrar na Sala -->
+
+    <!-- Modal Change Nick -->
+    <div class="modal fade" id="changeNick" tabindex="-1" role="dialog" aria-labelledby="modalChangeNick"
+        aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Mudar Nick</h5>
+                </div>
+                <div class="modal-body">
+                    <label for="inputUsername" class="sr-only">@username</label>
+                    <input type="text" id="inputUsername" class="form-control" placeholder="@username" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="changeUsername();">Criar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- FIM Modal Entrar na Sala -->
+
+    <script src="assets/index.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous">
+    </script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+        integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous">
+    </script>
+    <script src="assets/md5.js"></script>
+</body>
+
+</html>
