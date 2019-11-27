@@ -8,83 +8,15 @@ import (
 )
 
 // Define o Objeto da Conexão.
-type Conn struct {
+type conn struct {
 	Id     string           // Identificação única.
 	User   string           // Nickname / Usuário do Cliente.
 	Socket *websocket.Conn  // Endereço da conexão.
-	Rooms  map[string]*Room // Endereço das salas à que pertence.
-}
-
-// Entrando nas Rooms
-func (c *Conn) Join(name string) {
-	var room *Room
-
-	if _, ok := RoomManager[name]; ok {
-		room = RoomManager[name]
-	} else {
-		log.Printf(" Sala não existe")
-	}
-	room.Members[c.Id] = c
-	ConnManager[c.Id].Rooms[name] = room
-	c.Status(name, false)
-}
-
-// Remove usuario da sala
-func (c *Conn) Leave(name string) {
-	room := RoomManager[name]
-	c.Status(name, true)
-	delete(room.Members, c.Id)
-	delete(ConnManager, c.Id)
-	if len(room.Members) <= 0 {
-		room.emptyRoom <- true
-	}
-	//c.Socket.Close() //verificar e retirar
-}
-
-// Troca username ou nickname.
-func (c *Conn) ChangeUser(user string) {
-	for _, room := range c.Rooms {
-
-		m := Message{
-			Email:    "email",
-			Username: "Servidor",
-			Message:  c.User + " mudou para " + user,
-			Event:    "msg",
-			Room:     room.Name,
-			Server:   idServer,
-		}
-
-		canalSocket <- m
-		canalMult <- m
-	}
-	c.User = user
-}
-
-// Avisos do sistema [joined/leave]
-func (c *Conn) Status(name string, s bool) {
-	//room := RoomManager[name]
-	user := c.User
-	action := "Entrou."
-
-	if s {
-		action = "Saiu."
-	}
-
-	m := Message{
-		Email:    "email",
-		Username: "Servidor",
-		Message:  user + " " + action,
-		Event:    "msg",
-		Room:     name,
-		Server:   idServer,
-	}
-
-	canalSocket <- m
-	canalMult <- m
+	Rooms  map[string]*room // Endereço das salas à que pertence.
 }
 
 // Leitura de informações pelo socket.
-func (c *Conn) readSocket() {
+func (c *conn) readSocket() {
 
 	defer func() {
 		//desconetar o usuario de todas as salas que ele tinha entrado
@@ -96,24 +28,86 @@ func (c *Conn) readSocket() {
 
 	// Tratar o que o socket recebe.
 	for {
-		var msg Message
+		var msg message
 
 		// Ler as mensagens que são enviadas para o socket.
 		err := c.Socket.ReadJSON(&msg)
 
 		if err != nil {
 			log.Printf("error: %v", err)
-			//delete(ConnManager, c.Id)
 			break
 		}
-		//log.Printf("MSG: %v", msg)
 		handleData(c, msg)
 	}
 }
 
-func (c *Conn) sendList(lista []string, event string) {
+// Entrando nas Rooms
+func (c *conn) Join(name string) {
+	var room *room
+
+	if _, ok := roomManager[name]; ok {
+		room = roomManager[name]
+	} else {
+		log.Printf(" Sala não existe")
+	}
+	room.Members[c.Id] = c
+	connManager[c.Id].Rooms[name] = room
+	c.Status(name, false)
+}
+
+// Remove usuario da sala
+func (c *conn) Leave(name string) {
+	room := roomManager[name]
+	c.Status(name, true)
+	delete(room.Members, c.Id)
+	delete(connManager, c.Id)
+	if len(room.Members) <= 0 {
+		room.EmptyRoom <- true
+	}
+}
+
+// Troca username ou nickname.
+func (c *conn) ChangeUser(user string) {
+	for _, room := range c.Rooms {
+
+		m := message{
+			Email:    "email",
+			Username: "Servidor",
+			Message:  c.User + " mudou para " + user,
+			Event:    "msg",
+			Room:     room.Name,
+			Server:   idServer,
+		}
+
+		canalServer <- m
+	}
+	c.User = user
+}
+
+// Avisos do sistema [joined/leave]
+func (c *conn) Status(name string, s bool) {
+	user := c.User
+	action := "Entrou."
+
+	if s {
+		action = "Saiu."
+	}
+
+	m := message{
+		Email:    "email",
+		Username: "Servidor",
+		Message:  user + " " + action,
+		Event:    "msg",
+		Room:     name,
+		Server:   idServer,
+	}
+
+	canalServer <- m
+}
+
+func (c *conn) sendList(lista []string, event string) {
 	justString := strings.Join(lista, ",")
-	m := Message{
+	m := message{
 		Email:    "email",
 		Username: "Servidor",
 		Message:  justString,

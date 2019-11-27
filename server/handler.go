@@ -24,15 +24,15 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Armazena a conexão
-	c := &Conn{
+	c := &conn{
 		Socket: ws,
 		User:   id.String(), // momentaneamente o username do usuario é o ID dele
 		Id:     id.String(),
-		Rooms:  make(map[string]*Room),
+		Rooms:  make(map[string]*room),
 	}
 
 	//adiciono o as informações de conexão na lista de conexões do servidor
-	ConnManager[c.Id] = c
+	connManager[c.Id] = c
 	//log.Printf("Nova Conexão - ID: %s", c.Id)
 
 	//se a conexão estiver OK inicio a leitura do socket para obter informações
@@ -42,41 +42,31 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleData(c *Conn, msg Message) {
+func handleData(c *conn, msg message) {
 
 	msg.Server = idServer
 
 	switch msg.Event {
 	case "add":
-		//log.Printf("ADD Room")
-		_ = NewRoom(msg.Room)
-		//log.Printf("Sala %s Criada", sala.Name)
-		//enviar para o tcp
-		canalAdm <- msg
-		//
+		_ = newRoom(msg.Room)
+		canalServer <- msg
 		refreshRooms(msg.Room)
 		c.Join(msg.Room)
 	case "listUsers":
-		log.Printf("Lista de Usuarios")
 		c.sendList(listMembers(msg.Room), "listUsers")
 	case "listRooms":
-		log.Printf("Lista de Salas")
 		c.sendList(listRooms(), "listRooms")
 	case "join":
-		//log.Printf("Join Room")
 		c.Join(msg.Room)
 	case "change":
 		c.ChangeUser(msg.Username)
-		//log.Printf("Change User")
 	case "leave":
-		//log.Printf("Leave Room")
 		c.Leave(msg.Room)
 	default:
 		// Esse cliente tem permissão para esse canal?
 		if _, ok := c.Rooms[msg.Room]; ok {
-			// Envia a msg para o canal.
-			canalSocket <- msg
-			canalMult <- msg
+			// Envia a fila de mensgens do rabbit.
+			roomManager[msg.Room].Channel <- msg
 		} else {
 			log.Printf("Permissão Negada")
 		}
@@ -89,17 +79,14 @@ func handleMessages() {
 		msg := <-canalSocket
 
 		// obtenho o room que tem como destino a msg
-		room := RoomManager[msg.Room]
+		room := roomManager[msg.Room]
 
 		//Loop criado com o intuito de enviar a mensagem para todas as conexões de uma determinada sala
 		for _, client := range room.Members {
-			log.Printf("MSG: %v", msg)
 			// Escrevo a mensagem para aquela conexao de socket
 			err := client.Socket.WriteJSON(msg)
 			if err != nil {
-				log.Printf("error: %v", err)
 				client.Socket.Close()
-				//delete(ConnManager, client.Id)
 			}
 		}
 	}

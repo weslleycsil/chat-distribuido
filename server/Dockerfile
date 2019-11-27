@@ -3,6 +3,7 @@ FROM golang:1.10.4-alpine
 RUN apk add --no-cache git mercurial \
     && go get "github.com/google/uuid" \
     && go get "github.com/gorilla/websocket"\
+    && go get "github.com/streadway/amqp" \
     && apk del git mercurial
 RUN mkdir /app
 ADD . /app

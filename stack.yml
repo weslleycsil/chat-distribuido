@@ -5,6 +5,7 @@ services:
         image: weslleycsil/chat-go:1.1.0
         networks:
             - traefik_proxy
+            - backend
         deploy:
           replicas: 2
           labels:
@@ -12,8 +13,22 @@ services:
             - "traefik.docker.network=traefik_proxy"
             - "traefik.web.frontend.rule=Host:chat-go.sr73.twcreativs.stream"
         working_dir: /app
+    
+    rabitmq:
+        image: "rabbitmq:3-management"
+        networks:
+            - backend
+        environment:
+            #RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+            RABBITMQ_DEFAULT_USER: "guest"
+            RABBITMQ_DEFAULT_PASS: "guest"
+            RABBITMQ_DEFAULT_VHOST: "/"
+        ports:
+            - "15672:15672"
+
 
 networks:
     traefik_proxy:
         external:
             name: traefik_proxy
+    backend:

@@ -3,90 +3,132 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"net"
+
+	//"log"
+	"github.com/streadway/amqp"
 )
 
 // Define o objeto sala.
-type Room struct {
+type room struct {
 	Name      string           // Identificador da sala.
-	Members   map[string]*Conn // Endereço das conexões conectadas à está sala.
-	AddrRoom  *net.UDPAddr     // Endereço do canal multicast da sala.
-	emptyRoom chan bool        // Canal de Verificação de Sala vazia
+	Members   map[string]*conn // Endereço das conexões conectadas à está sala.
+	AddrRoom  *amqp.Queue      // Endereço do canal multicast da sala.
+	EmptyRoom chan bool        // Canal de Verificação de Sala vazia
+	Channel   chan message     // Canal dedicado a escutar as mensagens dessa sala.
 }
 
 // Cria uma nova ROOM.
-func NewRoom(name string) *Room {
-	r := &Room{
+func newRoom(name string) *room {
+	r := &room{
 		Name:      "root",
-		Members:   make(map[string]*Conn),
+		Members:   make(map[string]*conn),
 		AddrRoom:  nil,
-		emptyRoom: make(chan bool),
+		EmptyRoom: make(chan bool),
+		Channel:   make(chan message),
 	}
 	// A sala ja existe?
-	if _, ok := RoomManager[name]; ok {
-		//log.Printf("A sala ja existe")
-		r = RoomManager[name]
+	if _, ok := roomManager[name]; ok {
+		r = roomManager[name]
 		return r
 
-		// O nome foi setado?
+		// O nome não foi setado
 	} else if name == "" {
-		r.AddrRoom = manageMulticastGroup(name)
-		RoomManager[name] = r
-		go r.monitRoom()
-		return r
+		name = "SemNome"
+		r.Name = name
+		roomManager[name] = r
 
+		// Cria as exchanges para cordenar as queues.
+		err := canalRabbit.ExchangeDeclare(name, "fanout", true, false, false, false, nil)
+		failOnError(err, "Failed to open a Exchange")
+
+		// Declara as Queues anexadas ao canal.
+		queue, err := canalRabbit.QueueDeclare("", false, false, true, false, nil)
+		r.AddrRoom = &queue
+		failOnError(err, "Failed to open a Queue")
+
+		// Binda as Queues com os Exchanges.
+		err = canalRabbit.QueueBind(queue.Name, "", name, false, nil)
+		failOnError(err, "Failed to make a Bind")
+
+		// Prepara o canal para consumir das Queues.
+		msgConsumer, err := canalRabbit.Consume(queue.Name, "", true, false, false, false, nil)
+		failOnError(err, "Failed to open a Consume")
+
+		go r.writeRoom(r.AddrRoom, name, r.Channel)
+		go r.monitRoom(msgConsumer)
+		return r
+		// O nome foi setado
 	} else {
 		r.Name = name
-		r.AddrRoom = manageMulticastGroup(name)
-		RoomManager[name] = r
-		go r.monitRoom()
+		roomManager[name] = r
+
+		// Cria as exchanges para cordenar as queues.
+		err := canalRabbit.ExchangeDeclare(name, "fanout", true, false, false, false, nil)
+		failOnError(err, "Failed to open a Exchange")
+
+		// Declara as Queues anexadas ao canal.
+		queue, err := canalRabbit.QueueDeclare("", false, false, true, false, nil)
+		r.AddrRoom = &queue
+		failOnError(err, "Failed to open a Queue")
+
+		// Binda as Queues com os Exchanges.
+		err = canalRabbit.QueueBind(queue.Name, "", name, false, nil)
+		failOnError(err, "Failed to make a Bind")
+
+		// Prepara o canal para consumir das Queues.
+		msgConsumer, err := canalRabbit.Consume(queue.Name, "", true, false, false, false, nil)
+		failOnError(err, "Failed to open a Consume")
+
+		go r.writeRoom(r.AddrRoom, name, r.Channel)
+		go r.monitRoom(msgConsumer)
 		return r
 	}
 }
 
 // monitRoom disparada ao criar um grupo multicast verifico se há membros na sala
 // se tiver eu escuto o grupo multicast, se nao tiver eu deixo de escutar
-func (r *Room) monitRoom() {
-
-	Addr := r.AddrRoom
-	connListen, _ := net.ListenMulticastUDP("udp", nil, Addr)
-
+func (r *room) monitRoom(c <-chan amqp.Delivery) {
 	for {
 		select {
-		case <-r.emptyRoom:
+		case <-r.EmptyRoom:
 			return
 
 		default:
-			length, _, err := connListen.ReadFromUDP(readStr)
-			if err != nil {
-				fmt.Printf("Error when read from server. Error:%s\n", err)
-				continue
-			}
-			str := string(readStr[:length])
-			log.Printf("MSG Recebida UDP Sala: %s", str)
-			msg := Message{}
-			err = json.Unmarshal([]byte(str), &msg)
-			if err != nil {
-				log.Printf("ROLO: %s", str)
-				fmt.Printf("Erro ao tratar a msg %s\n", err)
-				continue
-			}
-			if msg.Server != idServer {
-				log.Printf("MSG Recebida UDP SALA!: %v", msg)
-				handleUDP(msg)
+			for mensagem := range c {
+				m := message{}
+				_ = json.Unmarshal([]byte(mensagem.Body), &m)
+				canalSocket <- m
 			}
 		}
+	}
+}
+
+// Escrever na fila de mensagens.
+func (r *room) writeRoom(q *amqp.Queue, ex string, ch chan message) {
+	for {
+		m := <-ch
+		bolB, _ := json.Marshal(m)
+
+		err := canalRabbit.Publish(
+			ex,     //exchange
+			q.Name, //routing key
+			false,  //mandatory
+			false,  //imediate
+			amqp.Publishing{
+				ContentType: "text/plain",
+				Body:        []byte(bolB),
+			})
+		failOnError(err, "Failed to publish a message")
 	}
 }
 
 // Atualiza a listagem das salas
 func listRooms() []string {
 	// Numero de salas no sistema.
-	tam := len(RoomManager)
+	tam := len(roomManager)
 	ArrayRooms := make([]string, tam)
 
-	for _, room := range RoomManager {
+	for _, room := range roomManager {
 		ArrayRooms = append(ArrayRooms, room.Name)
 	}
 	fmt.Println(ArrayRooms)
@@ -95,7 +137,7 @@ func listRooms() []string {
 
 // Atualiza a listagem das membros na sala
 func listMembers(RoomName string) []string {
-	sala := RoomManager[RoomName]
+	sala := roomManager[RoomName]
 	// Numero de membros naquela sala.
 	tam := len(sala.Members)
 	ArrayMembers := make([]string, tam)
@@ -110,7 +152,7 @@ func listMembers(RoomName string) []string {
 // Avisos do sistema [sala adicionada]
 func refreshRooms(name string) {
 
-	m := Message{
+	m := message{
 		Email:    "email",
 		Username: "Servidor",
 		Message:  "add sala",
@@ -118,6 +160,5 @@ func refreshRooms(name string) {
 		Room:     name,
 		Server:   idServer,
 	}
-	log.Printf("Aviso de nova sala criada")
-	canalSocket <- m
+	canalServer <- m
 }
